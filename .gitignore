@@ -1,0 +1,20 @@
+# 환경변수 및 OAuth 인증 토큰 보호
+.env
+**/.env
+token.json
+credentials.json
+client_secret*.json
+
+# 로컬 대용량 바이너리·터널 개인키·런타임 산출물 제외
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+dist/
+output/
+*.exe
+deploy/*.exe
+deploy/tunwg_keys/
+deploy/logs/
+deploy/deploy_status.json
+deploy/hanwoo_tunnel_key*

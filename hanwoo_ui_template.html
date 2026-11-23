@@ -1,0 +1,2856 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0F172A" />
+  <title>[근본한우 B2B 인텔리전스] 한우 6대 플랫폼 통합 관제 &amp; 시계열 웹 대시보드</title>
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', 'Malgun Gothic', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            navy: { 800: '#1E293B', 900: '#0F172A', 950: '#020617' }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    :root {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0; padding: 0; width: 100%; max-width: 100vw; min-height: 100dvh;
+      overflow-x: hidden; font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+      background-color: #F1F5F9; color: #0F172A; -webkit-font-smoothing: antialiased;
+    }
+    .num-tab { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+    .touch-btn { min-height: 34px; display: inline-flex; align-items: center; justify-content: center; }
+    ::-webkit-scrollbar { width: 7px; height: 7px; }
+    ::-webkit-scrollbar-track { background: #E2E8F0; }
+    ::-webkit-scrollbar-thumb { background: #94A3B8; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #64748B; }
+    .nav-item { transition: all 0.18s ease; border-left: 4px solid transparent; }
+    .nav-item.active {
+      background: linear-gradient(90deg, rgba(37, 99, 235, 0.24) 0%, rgba(30, 41, 59, 0.4) 100%);
+      border-left-color: #3B82F6; color: #FFFFFF; font-weight: 700;
+    }
+    .bottom-tab-item { transition: all 0.15s ease; color: #64748B; }
+    .bottom-tab-item.active { color: #2563EB; font-weight: 700; }
+    .badge-frozen { background-color: #DBEAFE; color: #1D4ED8; border: 1px solid #93C5FD; }
+    .badge-chilled { background-color: #DCFCE7; color: #15803D; border: 1px solid #86EFAC; }
+    .badge-geunbon {
+      background: linear-gradient(135deg, #991B1B 0%, #DC2626 100%);
+      color: #FFFFFF; box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
+    }
+    .badge-amso { background-color: #FCE7F3; color: #BE185D; border: 1px solid #F9A8D4; }
+    .badge-geose { background-color: #E0E7FF; color: #3730A3; border: 1px solid #A5B4FC; }
+    .badge-grade { background-color: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
+    @media (max-width: 767px) {
+      .desktop-table-only { display: none !important; }
+      .mobile-cards-only { display: block !important; }
+      .main-content-area { padding-bottom: calc(82px + var(--safe-bottom)) !important; }
+    }
+    @media (min-width: 768px) {
+      .desktop-table-only { display: block !important; }
+      .mobile-cards-only { display: none !important; }
+    }
+    #pcSidebar { transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), width 0.22s ease; }
+    .main-content-area { transition: padding-left 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+    @media (min-width: 1024px) {
+      body.sidebar-collapsed #pcSidebar { transform: translateX(-100%); }
+      body.sidebar-collapsed .main-content-area { padding-left: 0 !important; }
+    }
+    body.density-compact table th, body.density-compact table td {
+      padding-top: 0.30rem !important; padding-bottom: 0.30rem !important;
+      padding-left: 0.42rem !important; padding-right: 0.42rem !important;
+      font-size: 11px !important; line-height: 1.25 !important;
+    }
+
+    /* =========================================================================
+       [요청사항 반영] 행열의 시트에서 모든 행/열 스크롤 이동시 완벽 Sticky 고정
+       - 상단 헤더(thead th) 상하 스크롤 시 고정 (top: 0, z-index: 30)
+       - 좌측 기준 행 컬럼(th:first-child, td:first-child 및 근본한우 메인컬럼) 좌우 스크롤 시 고정
+       ========================================================================= */
+    .sticky-table-wrap {
+      max-height: 70vh;
+      overflow: auto;
+      border-radius: 0.75rem;
+      border: 1px solid #CBD5E1;
+      position: relative;
+      background-color: #FFFFFF;
+    }
+    .sticky-table {
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    .sticky-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background-color: #0F172A;
+      border-bottom: 2px solid #334155;
+    }
+    .sticky-table thead th.gb-main-th {
+      background-color: #7F1D1D !important;
+    }
+    @media (min-width: 768px) {
+      .sticky-table thead th:first-child {
+        position: sticky;
+        left: 0;
+        top: 0;
+        z-index: 40;
+        background-color: #0F172A;
+        box-shadow: 2px 0 5px rgba(15, 23, 42, 0.18);
+      }
+      .sticky-table tbody td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 20;
+        background-color: #FFFFFF;
+        box-shadow: 2px 0 5px rgba(15, 23, 42, 0.09);
+      }
+      /* View 4 체크박스 + 플랫폼 + 품목 좌측 고정 */
+      .sticky-table-v4 thead th:nth-child(1) {
+        position: sticky; left: 0; top: 0; z-index: 42; width: 42px; min-width: 42px;
+      }
+      .sticky-table-v4 tbody td:nth-child(1) {
+        position: sticky; left: 0; z-index: 22; background-color: #FFFFFF; width: 42px; min-width: 42px;
+      }
+      .sticky-table-v4 thead th:nth-child(2) {
+        position: sticky; left: 42px; top: 0; z-index: 41; min-width: 118px;
+      }
+      .sticky-table-v4 tbody td:nth-child(2) {
+        position: sticky; left: 42px; z-index: 21; background-color: #FFFFFF; min-width: 118px;
+      }
+      .sticky-table-v4 thead th:nth-child(3) {
+        position: sticky; left: 160px; top: 0; z-index: 41; min-width: 155px; box-shadow: 2px 0 5px rgba(15, 23, 42, 0.18);
+      }
+      .sticky-table-v4 tbody td:nth-child(3) {
+        position: sticky; left: 160px; z-index: 21; background-color: #FFFFFF; min-width: 155px; box-shadow: 2px 0 5px rgba(15, 23, 42, 0.09);
+      }
+      .sticky-table tbody tr:hover td {
+        background-color: #EFF6FF !important;
+      }
+      .sticky-table tbody tr:hover td:first-child,
+      .sticky-table-v4 tbody tr:hover td:nth-child(1),
+      .sticky-table-v4 tbody tr:hover td:nth-child(2),
+      .sticky-table-v4 tbody tr:hover td:nth-child(3) {
+        background-color: #DBEAFE !important;
+      }
+    }
+
+    .price-spectrum-track {
+      width: 100%; height: 5px; background-color: #E2E8F0; border-radius: 9999px; overflow: hidden; margin-top: 4px;
+    }
+    .price-spectrum-fill { height: 100%; border-radius: 9999px; transition: width 0.3s ease; }
+
+    /* [요청사항 반영] 상단에 모든 부위 탭이 가로스크롤 없이 한번에 보일 수 있도록 줄바꿈(flex-wrap) 컴팩트 칩 스타일 */
+    .part-chip {
+      transition: all 0.14s ease;
+      white-space: nowrap;
+      line-height: 1.2;
+    }
+    .part-chip.active {
+      background-color: #0F172A; color: #FFFFFF; border-color: #0F172A;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.22);
+    }
+    .part-chip.multi-active {
+      background-color: #2563EB; color: #FFFFFF; border-color: #1D4ED8;
+      box-shadow: 0 1px 4px rgba(37, 99, 235, 0.28);
+    }
+
+    @media print {
+      @page { size: A4 landscape; margin: 8mm; }
+      header, aside, nav, #quickPartChipSection, .no-print { display: none !important; }
+      .main-content-area { padding-left: 0 !important; padding-bottom: 0 !important; }
+      .sticky-table-wrap { max-height: none !important; overflow: visible !important; }
+      body { background-color: #FFFFFF !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900">
+
+  <!-- ===================== 모바일 상단 고정 헤더 ===================== -->
+  <header class="lg:hidden sticky top-0 z-40 bg-navy-900 text-white shadow-md" style="padding-top: var(--safe-top);">
+    <div class="flex items-center justify-between px-3 py-2.5">
+      <div class="flex items-center gap-1.5 min-w-0">
+        <button id="btnOpenDrawer" type="button" onclick="toggleMobileDrawer(true)" aria-label="메뉴 열기"
+          class="touch-btn shrink-0 rounded-lg bg-slate-800/90 text-slate-100 hover:bg-slate-700 px-2.5">☰</button>
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5">
+            <span class="shrink-0 px-1.5 py-0.5 text-[10px] font-extrabold rounded bg-red-600 text-white">근본한우</span>
+            <h1 class="text-xs sm:text-sm font-bold tracking-tight truncate">한우 6대 플랫폼 관제</h1>
+          </div>
+          <p id="mobileSubStatus" class="text-[10px] text-slate-300 truncate">{{PRE_UPDATED_BADGE}}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-1 shrink-0">
+        <button type="button" onclick="triggerLiveCrawl()" id="btnMobileCrawl"
+          class="touch-btn px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white shadow-sm">🔄 수집</button>
+        <a href="./data/hanwoo_master_cumulative.xlsx" download="[누적_기초데이터]_한우원물_시세_및_플랫폼비교_마스터.xlsx"
+          class="touch-btn px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white shadow-sm">📥 엑셀</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================== 모바일 슬라이드 드로어 ===================== -->
+  <div id="mobileDrawerBackdrop" onclick="toggleMobileDrawer(false)"
+    class="fixed inset-0 z-50 bg-slate-950/60 hidden opacity-0 lg:hidden"></div>
+  <aside id="mobileDrawerPanel"
+    class="fixed top-0 left-0 bottom-0 z-50 w-72 max-w-[82vw] bg-navy-900 text-slate-100 shadow-2xl transform -translate-x-full lg:hidden flex flex-col justify-between overflow-y-auto">
+    <div>
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+        <div>
+          <span class="text-[11px] font-bold text-blue-400 uppercase tracking-wider">GEUNBON HANWOO B2B</span>
+          <h2 class="text-base font-extrabold text-white mt-0.5">한우 6대 플랫폼 대시보드</h2>
+        </div>
+        <button type="button" onclick="toggleMobileDrawer(false)" class="touch-btn text-slate-400 hover:text-white">✕</button>
+      </div>
+      <nav class="py-3 space-y-1">
+        <button type="button" onclick="switchView(1); toggleMobileDrawer(false);" data-nav="1"
+          class="nav-item active w-full text-left px-4 py-3.5 text-sm flex items-center justify-between">
+          <span>📊 1. 실시간 문제해결 &amp; 종합 대시보드</span>
+        </button>
+        <button type="button" onclick="switchView(2); toggleMobileDrawer(false);" data-nav="2"
+          class="nav-item w-full text-left px-4 py-3.5 text-sm flex items-center justify-between">
+          <span>⚖️ 2. 플랫폼 품목 매핑 &amp; 근본한우 비교</span>
+        </button>
+        <button type="button" onclick="switchView(3); toggleMobileDrawer(false);" data-nav="3"
+          class="nav-item w-full text-left px-4 py-3.5 text-sm flex items-center justify-between">
+          <span>📅 3. 생산일자별 최저·최고가 분석</span>
+        </button>
+        <button type="button" onclick="switchView(4); toggleMobileDrawer(false);" data-nav="4"
+          class="nav-item w-full text-left px-4 py-3.5 text-sm flex items-center justify-between">
+          <span>🔍 4. 전 상품 필터 &amp; 누적 체크 관리</span>
+          <span id="drawerTrackedBadge" class="px-2 py-0.5 text-xs rounded-full bg-blue-600 text-white font-bold">0</span>
+        </button>
+        <button type="button" onclick="switchView(5); toggleMobileDrawer(false);" data-nav="5"
+          class="nav-item w-full text-left px-4 py-3.5 text-sm flex items-center justify-between">
+          <span>🗂️ 5. 누적 DB 이력 &amp; 시트 다운로드</span>
+        </button>
+      </nav>
+    </div>
+    <div class="p-4 border-t border-slate-800 text-xs text-slate-400 space-y-1.5">
+      <div class="flex items-center justify-between">
+        <span>정기 자동수집</span>
+        <span class="px-2 py-0.5 rounded bg-blue-950 text-blue-300 font-semibold">월~금 09:30 · 16:30</span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span>품절/재고주의 기준</span>
+        <span class="px-2 py-0.5 rounded bg-amber-950 text-amber-300 font-semibold">냉장&lt;5 · 냉동&lt;10</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================== 전체 레이아웃 컨테이너 (PC 좌측 고정 사이드바 + 우측 메인) ===================== -->
+  <div class="flex min-h-[100dvh] w-full">
+
+    <!-- PC 좌측 고정 사이드바 -->
+    <aside id="pcSidebar" class="hidden lg:flex lg:flex-col lg:w-72 lg:fixed lg:inset-y-0 bg-navy-900 text-slate-100 shadow-xl z-30 justify-between">
+      <div>
+        <div class="p-5 border-b border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 text-xs font-extrabold rounded bg-red-600 text-white tracking-wide">근본한우</span>
+            <span class="px-2 py-0.5 text-[11px] font-semibold rounded bg-blue-950 text-blue-300 border border-blue-800">B2B Intelligence</span>
+          </div>
+          <h1 class="text-lg font-extrabold text-white mt-2 tracking-tight">한우 6대 플랫폼 통합 관제</h1>
+          <p class="text-xs text-slate-400 mt-1">근본한우·미트박스·금천·미트프렌즈·탑미트·본대로</p>
+        </div>
+
+        <div class="px-4 py-3 bg-slate-900/90 border-b border-slate-800">
+          <label for="pcRunSelector" class="block text-[11px] font-bold text-slate-400 uppercase mb-1">
+            ⏱️ 조회 기준 시계열 스냅샷 (DB 누적)
+          </label>
+          <select id="pcRunSelector" onchange="onChangeRunSnapshot(this.value)"
+            class="w-full rounded-lg bg-slate-800 border border-slate-700 text-slate-100 px-3 py-2 text-xs font-semibold focus:outline-none focus:border-blue-500">
+            {{PRE_SNAP_OPTIONS}}
+          </select>
+        </div>
+
+        <div class="px-3 pt-4 pb-2">
+          <p class="px-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">핵심 분석 메뉴 (5 Views)</p>
+          <nav class="space-y-1">
+            <button type="button" onclick="switchView(1)" data-nav="1"
+              class="nav-item active w-full text-left px-3.5 py-2.5 rounded-r-lg text-[13px] flex items-center justify-between text-slate-200 hover:bg-slate-800/70">
+              <span>📊 1. 실시간 문제해결 &amp; 종합 대시보드</span>
+            </button>
+            <button type="button" onclick="switchView(2)" data-nav="2"
+              class="nav-item w-full text-left px-3.5 py-2.5 rounded-r-lg text-[13px] flex items-center justify-between text-slate-300 hover:bg-slate-800/70">
+              <span>⚖️ 2. 플랫폼 품목 매핑 &amp; 근본한우 비교</span>
+            </button>
+            <button type="button" onclick="switchView(3)" data-nav="3"
+              class="nav-item w-full text-left px-3.5 py-2.5 rounded-r-lg text-[13px] flex items-center justify-between text-slate-300 hover:bg-slate-800/70">
+              <span>📅 3. 생산일자별 최저·최고가 분석</span>
+            </button>
+            <button type="button" onclick="switchView(4)" data-nav="4"
+              class="nav-item w-full text-left px-3.5 py-2.5 rounded-r-lg text-[13px] flex items-center justify-between text-slate-300 hover:bg-slate-800/70">
+              <span>🔍 4. 전 상품 필터 &amp; 누적 체크 관리</span>
+              <span id="sidebarTrackedBadge" class="px-2 py-0.5 text-[11px] rounded-full bg-blue-600 text-white font-bold">0</span>
+            </button>
+            <button type="button" onclick="switchView(5)" data-nav="5"
+              class="nav-item w-full text-left px-3.5 py-2.5 rounded-r-lg text-[13px] flex items-center justify-between text-slate-300 hover:bg-slate-800/70">
+              <span>🗂️ 5. 누적 DB 이력 &amp; 시트 다운로드</span>
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-slate-800 bg-slate-950/60 space-y-2.5">
+        <button type="button" onclick="triggerLiveCrawl()" id="btnSidebarCrawl"
+          class="touch-btn w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-900/40 transition flex items-center justify-center gap-2">
+          <span>🔄 6대 플랫폼 즉시 크롤링 (DB 누적)</span>
+        </button>
+        <a id="btnSidebarExcel" href="./data/hanwoo_master_cumulative.xlsx" download="[누적_기초데이터]_한우원물_시세_및_플랫폼비교_마스터.xlsx"
+          class="touch-btn w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition flex items-center justify-center gap-2">
+          <span>📥 한우_누적마스터.xlsx 다운로드</span>
+        </a>
+        <div class="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-1">
+          <div class="flex justify-between">
+            <span>자동 크롤링 스케줄:</span>
+            <span class="text-blue-400 font-bold">월~금 09:30 · 16:30 (토·일 제외)</span>
+          </div>
+          <div class="flex justify-between">
+            <span>다음 예정 시각:</span>
+            <span id="sidebarNextSchedule" class="text-slate-200 font-bold num-tab">평일 09:30 / 16:30</span>
+          </div>
+          <div class="flex justify-between">
+            <span>품절/재고주의 기준:</span>
+            <span class="text-amber-300 font-bold">냉장 &lt; 5개 · 냉동 &lt; 10개</span>
+          </div>
+          <div class="flex justify-between">
+            <span>축평원 지육경락가:</span>
+            <span id="sidebarCarcassInfo" class="text-emerald-400 font-bold">{{PRE_CARCASS_SIDEBAR}}</span>
+          </div>
+          <div class="flex justify-between">
+            <span>2차검증 정밀보정:</span>
+            <span id="sidebarDroppedCnt" class="text-amber-300 font-bold">{{PRE_VERIFIED_CNT}}건 보정</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===================== 우측 메인 콘텐츠 영역 ===================== -->
+    <main class="main-content-area flex-1 lg:pl-72 w-full max-w-full overflow-x-hidden">
+
+      <!-- 1) 상단 상태 컨트롤 바 -->
+      <div class="bg-white border-b border-slate-200 px-4 lg:px-8 py-2 flex flex-wrap items-center justify-between gap-2 sticky top-0 z-30 shadow-xs">
+        <div class="flex items-center gap-2 flex-wrap">
+          <button type="button" id="btnToggleSidebar" onclick="toggleSidebarCollapse()" title="좌측 사이드바 접기/펼치기"
+            class="hidden lg:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold border border-slate-300 transition no-print">
+            <span id="sidebarToggleIcon">◀</span>
+            <span id="sidebarToggleText">와이드 화면</span>
+          </button>
+          <span id="currentViewBadge" class="px-2.5 py-1 rounded-md bg-navy-900 text-white text-xs font-bold">
+            📊 1. 실시간 문제해결 &amp; 종합 대시보드
+          </span>
+          <div class="text-xs text-slate-600 flex items-center gap-2 flex-wrap">
+            <span>최종 수집일시: <strong id="topCollectedAt" class="text-slate-900 font-bold num-tab">{{PRE_COLLECTED_DATE}}</strong></span>
+            <span class="text-slate-300">|</span>
+            <span>회차: <strong id="topRunId" class="text-blue-600 font-bold num-tab">#{{PRE_RUN_NO}}</strong></span>
+            <span class="hidden xl:inline text-slate-300">|</span>
+            <span class="hidden xl:inline">재고주의 기준: <strong class="text-amber-700 font-bold">냉장 5개 미만 · 냉동 10개 미만</strong></span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 w-full sm:w-auto justify-between sm:justify-end no-print">
+          <select id="mobileRunSelector" onchange="onChangeRunSnapshot(this.value)"
+            class="lg:hidden flex-1 min-w-0 rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-800 truncate">
+            {{PRE_SNAP_OPTIONS}}
+          </select>
+          <button type="button" id="btnToggleDensity" onclick="toggleDensityMode()"
+            class="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition">
+            <span>⚡ 고밀도(엑셀형) 뷰</span>
+          </button>
+          <button type="button" onclick="exportCurrentViewCsv()"
+            class="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition">
+            <span>📊 현재표 CSV</span>
+          </button>
+          <button type="button" onclick="window.print()"
+            class="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition">
+            <span>🖨️ 인쇄/PDF</span>
+          </button>
+          <button type="button" onclick="switchView(4); filterOnlyTracked();"
+            class="touch-btn shrink-0 whitespace-nowrap px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition">
+            ⭐ 중점체크 (<span id="topTrackedCount" class="num-tab">0</span>건)
+          </button>
+        </div>
+      </div>
+
+      <!-- 2) [한우 필수 5대 필터 + 상단 전체 노출형 부위 탭 바 (가로스크롤 없이 한눈에 전체 탭 노출 & 최대 5개 중복 선택 지원)] -->
+      <div id="quickPartChipSection" class="bg-slate-50/95 border-b border-slate-200 px-4 lg:px-8 py-2 space-y-1.5">
+        <div class="flex flex-wrap items-center gap-1.5">
+          <button type="button" id="btnQuickReset" onclick="resetQuickAndAllFilters()"
+            class="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-extrabold shadow-2xs transition cursor-pointer">
+            <span>🔄 전체 초기화</span>
+          </button>
+          <span class="text-slate-300 shrink-0">|</span>
+
+          <!-- ① 축종구분 -->
+          <div class="flex items-center gap-1 shrink-0" id="quickCattleChipBar">
+            <span class="text-[11px] font-extrabold text-slate-600">① 축종:</span>
+            <button type="button" onclick="setGlobalFilter('cattle', 'ALL')" data-qcattle="ALL"
+              class="qcattle-chip px-2 py-0.5 rounded-lg border text-xs font-extrabold bg-navy-900 text-white border-navy-900">전체</button>
+            <button type="button" onclick="setGlobalFilter('cattle', '한우거세')" data-qcattle="한우거세"
+              class="qcattle-chip px-2 py-0.5 rounded-lg border text-xs font-bold bg-white hover:bg-indigo-50 text-indigo-900 border-indigo-300">🐂 거세</button>
+            <button type="button" onclick="setGlobalFilter('cattle', '한우암소')" data-qcattle="한우암소"
+              class="qcattle-chip px-2 py-0.5 rounded-lg border text-xs font-bold bg-white hover:bg-pink-50 text-pink-800 border-pink-300">🐄 암소</button>
+          </div>
+          <span class="text-slate-300 shrink-0">|</span>
+
+          <!-- ② 등급필터 -->
+          <div class="flex items-center gap-1 shrink-0">
+            <label for="globalGradeSelect" class="text-[11px] font-extrabold text-amber-800">② 등급필터:</label>
+            <select id="globalGradeSelect" onchange="setGlobalFilter('grade', this.value)"
+              class="rounded-lg border border-amber-300 bg-amber-50/60 px-2 py-0.5 text-xs font-extrabold text-slate-900 focus:outline-none">
+              <option value="ALL">전체 등급 (1++(9)~등외)</option>
+              <option value="1++(9)">👑 1++(9)</option>
+              <option value="1++(8)">👑 1++(8)</option>
+              <option value="1++(7)">👑 1++(7)</option>
+              <option value="1++(불명)">1++(불명)</option>
+              <option value="1+">1+</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="등외">등외</option>
+            </select>
+          </div>
+          <span class="text-slate-300 shrink-0">|</span>
+
+          <!-- ③ 보관상태 -->
+          <div class="flex items-center gap-1 shrink-0" id="quickKeepingChipBar">
+            <span class="text-[11px] font-extrabold text-slate-600">③ 보관상태:</span>
+            <button type="button" onclick="setGlobalFilter('keeping', 'ALL')" data-qkeep="ALL"
+              class="qkeep-chip px-2 py-0.5 rounded-lg border text-xs font-extrabold bg-navy-900 text-white border-navy-900">전체(💧+❄️)</button>
+            <button type="button" onclick="setGlobalFilter('keeping', '냉장')" data-qkeep="냉장"
+              class="qkeep-chip px-2 py-0.5 rounded-lg border text-xs font-bold bg-white hover:bg-emerald-50 text-emerald-800 border-emerald-300">💧 냉장</button>
+            <button type="button" onclick="setGlobalFilter('keeping', '냉동')" data-qkeep="냉동"
+              class="qkeep-chip px-2 py-0.5 rounded-lg border text-xs font-bold bg-white hover:bg-blue-50 text-blue-800 border-blue-300">❄️ 냉동</button>
+          </div>
+          <span class="text-slate-300 shrink-0">|</span>
+
+          <!-- ④ 대분류 -->
+          <div class="flex items-center gap-1 shrink-0">
+            <label for="globalMajorSelect" class="text-[11px] font-extrabold text-slate-700">④ 대분류:</label>
+            <select id="globalMajorSelect" onchange="setGlobalFilter('major', this.value)"
+              class="rounded-lg border border-slate-300 bg-white px-2 py-0.5 text-xs font-bold text-slate-900 focus:outline-none">
+              <option value="ALL">전체 대분류 (10대 부위)</option>
+            </select>
+          </div>
+          <span class="text-slate-300 shrink-0">|</span>
+
+          <!-- ⑤ 중분류 -->
+          <div class="flex items-center gap-1 shrink-0">
+            <label for="globalPartSelect" class="text-[11px] font-extrabold text-blue-800">⑤ 중분류:</label>
+            <select id="globalPartSelect" onchange="setGlobalFilter('part', this.value)"
+              class="rounded-lg border border-blue-300 bg-blue-50/40 px-2 py-0.5 text-xs font-extrabold text-slate-900 focus:outline-none">
+              <option value="ALL">전체 중분류 (49종)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- [요청사항 반영] 상단 부위 탭이 가로 스크롤 없이 한눈에 모두 보이도록 flex-wrap 구성 + 중복 선택(최대 5개) 안내 -->
+        <div class="flex flex-wrap items-center gap-1 pt-0.5">
+          <span class="text-[11px] font-extrabold text-slate-600 mr-1 flex items-center gap-1">
+            <span>🎯 부위 탭 (클릭 시 상단 4개 카테고리·차트 즉시 반응 / 전상품 탭에서 최대 5개 중복선택):</span>
+          </span>
+          <div id="quickPartChipBar" class="flex flex-wrap items-center gap-1"></div>
+        </div>
+      </div>
+
+      <!-- 토스트 배너 -->
+      <div id="toastBanner" class="hidden fixed top-4 right-4 z-50 max-w-sm bg-navy-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 text-xs font-semibold flex items-center gap-2.5">
+        <span id="toastIcon">✅</span>
+        <span id="toastMessage">처리 완료</span>
+      </div>
+
+      <!-- 콘텐츠 래퍼 -->
+      <div class="p-3.5 sm:p-5 lg:p-6 space-y-6 max-w-[1720px] mx-auto">
+
+        <!-- ===================================================================== -->
+        <!-- [VIEW 1] 📊 1. 실시간 문제해결 & 종합 대시보드 -->
+        <!-- ===================================================================== -->
+        <section id="view-1" class="space-y-6">
+
+          <!-- 1) 핵심 KPI 요약 카드 4열 그리드 (부위 탭 적용 시 실시간 데이터 반응!) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 lg:gap-4">
+            <!-- KPI 1 -->
+            <div class="kpi-card-box bg-white rounded-2xl p-4 lg:p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-500" id="kpi1Title">6대 플랫폼 유효 한우 원물 (세절제외)</span>
+                <span class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-blue-50 text-blue-700">1kg 정규화 완료</span>
+              </div>
+              <div class="my-2.5 flex items-baseline gap-2 flex-wrap">
+                <span id="kpiTotalSku" class="text-2xl lg:text-3xl font-extrabold text-slate-900 num-tab">{{PRE_TOTAL_RAW}}</span>
+                <span class="text-xs font-semibold text-slate-500">개 옵션 (중분류 <strong id="kpiWonmulSku" class="text-slate-800 num-tab">{{PRE_CNT_ITEMS}}</strong>종 · 등급조건 <strong id="kpiGradeCondCnt" class="text-indigo-700 num-tab">{{PRE_CNT_GRADES}}</strong>개)</span>
+              </div>
+              <div class="text-xs text-slate-600 flex items-center justify-between pt-2 border-t border-slate-100">
+                <span>축평원 지육경락가 (거세 / 암소)</span>
+                <strong id="kpiCarcassSummary" class="text-slate-900 font-bold num-tab">{{PRE_CARCASS_KPI}}</strong>
+              </div>
+            </div>
+
+            <!-- KPI 2 -->
+            <div onclick="document.getElementById('problemAlertSection').scrollIntoView({behavior:'smooth'})"
+              class="kpi-card-box cursor-pointer bg-white rounded-2xl p-4 lg:p-5 border-l-4 border-l-red-600 border border-slate-200/90 shadow-xs hover:shadow-md transition flex flex-col justify-between">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-extrabold text-red-700">🚨 근본한우 가격 역전 (타사 열위)</span>
+                <span class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-red-100 text-red-700">즉시 단가점검</span>
+              </div>
+              <div class="my-2.5 flex items-baseline gap-2">
+                <span id="kpiRedAlertCnt" class="text-2xl lg:text-3xl font-extrabold text-red-600 num-tab">{{PRE_RED_CNT}}</span>
+                <span class="text-xs font-semibold text-slate-600">개 조건에서 타사 대비 단가 열위</span>
+              </div>
+              <div class="text-xs text-red-700 font-medium pt-2 border-t border-red-50 flex items-center justify-between">
+                <span>클릭하여 가격 역전 품목 &amp; 최저/최고가 링크 확인</span>
+                <span>→</span>
+              </div>
+            </div>
+
+            <!-- KPI 3: 품절/주의품목 (냉장 재고 5개 미만 / 냉동 재고 10개 미만) & 노후재고 착시 -->
+            <div onclick="switchView(3)"
+              class="kpi-card-box cursor-pointer bg-white rounded-2xl p-4 lg:p-5 border-l-4 border-l-amber-500 border border-slate-200/90 shadow-xs hover:shadow-md transition flex flex-col justify-between">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-extrabold text-amber-800">⚠️ 품절/주의(냉장&lt;5·냉동&lt;10) &amp; 덤핑착시</span>
+                <span class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-amber-100 text-amber-800">재고/생산일 대조</span>
+              </div>
+              <div class="my-2.5 flex items-baseline gap-2">
+                <span id="kpiAmberCnt" class="text-2xl lg:text-3xl font-extrabold text-amber-600 num-tab">{{PRE_AMBER_CNT}}</span>
+                <span class="text-xs font-semibold text-slate-600">건 (재고주의 <strong id="kpiLowStockCnt" class="text-red-700 num-tab">0</strong>건 · 덤핑착시 <strong id="kpiDumpingCnt" class="text-amber-800 num-tab">{{PRE_DUMP_CNT}}</strong>건)</span>
+              </div>
+              <div class="text-xs text-amber-800 font-medium pt-2 border-t border-amber-50 flex items-center justify-between">
+                <span>냉장 5개 미만 · 냉동 10개 미만 &amp; 생산일자 분석 이동</span>
+                <span>→</span>
+              </div>
+            </div>
+
+            <!-- KPI 4 -->
+            <div onclick="switchView(2)"
+              class="kpi-card-box cursor-pointer bg-white rounded-2xl p-4 lg:p-5 border-l-4 border-l-emerald-600 border border-slate-200/90 shadow-xs hover:shadow-md transition flex flex-col justify-between">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-extrabold text-emerald-800">✅ 근본한우 가격 우위 &amp; 중점관리</span>
+                <span class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-emerald-100 text-emerald-800">경쟁우위 확보</span>
+              </div>
+              <div class="my-2.5 flex items-baseline gap-2">
+                <span id="kpiEmeraldCnt" class="text-2xl lg:text-3xl font-extrabold text-emerald-600 num-tab">{{PRE_EMERALD_CNT}}</span>
+                <span class="text-xs font-semibold text-slate-600">개 조건 우위 / 체크상품 <strong id="kpiTrackedCnt" class="text-blue-700 num-tab">0</strong>건</span>
+              </div>
+              <div class="text-xs text-emerald-800 font-medium pt-2 border-t border-emerald-50 flex items-center justify-between">
+                <span>플랫폼 품목 매핑 &amp; 근본한우 비교표 이동</span>
+                <span>→</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2) [요청사항 반영] 실시간 문제해결 인텔리전스 브리핑 (카테고리별 냉장/냉동 구분필터 적용 + 최저/최고가 하이퍼링크) -->
+          <div id="problemAlertSection" class="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 lg:p-6 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <h2 class="text-base lg:text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                  <span>🚦 실시간 문제해결 인텔리전스 브리핑 (Actionable Alerts)</span>
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  품절/주의품목 기준(<strong>냉장 재고 5개 미만 · 냉동 재고 10개 미만</strong>) 및 가격 역전·장기재고 착시를 실시간 감지하며, 우측 <strong>냉장/냉동 구분필터</strong>로 즉시 전환됩니다.
+                </p>
+              </div>
+              <!-- 브리핑 전용 냉장/냉동 구분필터 -->
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-xs font-extrabold text-slate-600 mr-1">브리핑 보관구분:</span>
+                <button type="button" onclick="setBriefingKeeping('ALL')" data-bkeep="ALL"
+                  class="bkeep-btn px-3 py-1.5 rounded-lg bg-navy-900 text-white text-xs font-extrabold">
+                  전체(💧냉장+❄️냉동)
+                </button>
+                <button type="button" onclick="setBriefingKeeping('냉장')" data-bkeep="냉장"
+                  class="bkeep-btn px-3 py-1.5 rounded-lg bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-bold">
+                  💧 냉장 전용 브리핑
+                </button>
+                <button type="button" onclick="setBriefingKeeping('냉동')" data-bkeep="냉동"
+                  class="bkeep-btn px-3 py-1.5 rounded-lg bg-white hover:bg-blue-50 text-blue-800 border border-blue-300 text-xs font-bold">
+                  ❄️ 냉동 전용 브리핑
+                </button>
+                <button type="button" onclick="switchView(2)"
+                  class="touch-btn px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold ml-1">
+                  전체 매핑표 →
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <!-- 🚨 Red Alert -->
+              <div class="rounded-xl border border-red-200 bg-red-50/50 p-3.5 space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-extrabold text-red-800 flex items-center gap-1.5">
+                    🚨 가격 역전 경고 (근본한우 단가 열위)
+                  </span>
+                  <span id="badgeRedCnt" class="px-2 py-0.5 text-[11px] font-extrabold rounded-full bg-red-600 text-white num-tab">{{PRE_RED_CNT}}건</span>
+                </div>
+                <div id="redAlertList" class="space-y-2 max-h-[340px] overflow-y-auto pr-1">{{PRE_RED_HTML}}</div>
+              </div>
+
+              <!-- ⚠️ Amber Warning (냉장<5 / 냉동<10 재고주의 + 노후재고 착시) -->
+              <div class="rounded-xl border border-amber-200 bg-amber-50/50 p-3.5 space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-extrabold text-amber-900 flex items-center gap-1.5">
+                    ⚠️ 품절/주의품목(냉장&lt;5·냉동&lt;10) &amp; 노후재고 착시
+                  </span>
+                  <span id="badgeAmberCnt" class="px-2 py-0.5 text-[11px] font-extrabold rounded-full bg-amber-500 text-white num-tab">{{PRE_AMBER_CNT}}건</span>
+                </div>
+                <div id="amberWarningList" class="space-y-2 max-h-[340px] overflow-y-auto pr-1">{{PRE_AMBER_HTML}}</div>
+              </div>
+
+              <!-- ✅ Emerald Opportunity -->
+              <div class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3.5 space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-extrabold text-emerald-900 flex items-center gap-1.5">
+                    ✅ 최저가 1위 선점 및 마진방어 기회
+                  </span>
+                  <span id="badgeEmeraldCnt" class="px-2 py-0.5 text-[11px] font-extrabold rounded-full bg-emerald-600 text-white num-tab">{{PRE_EMERALD_CNT}}건</span>
+                </div>
+                <div id="emeraldOppList" class="space-y-2 max-h-[340px] overflow-y-auto pr-1">{{PRE_EMERALD_HTML}}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3) 비교군 단가 비교 바 차트 (8 cols) & [요청사항 반영] 비교군 수집·재고·최저가 우위 현황 (냉장/냉동 구분필터 적용 시 데이터 변동, 4 cols) -->
+          <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+            <!-- 좌측 8 cols -->
+            <div class="xl:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-xs p-4 lg:p-6">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <div>
+                  <h3 class="text-sm lg:text-base font-extrabold text-slate-900">
+                    📉 부위별 비교군 최저가 비교 차트 (원물 1kg 단가 기준)
+                  </h3>
+                  <p class="text-xs text-slate-500">⭐근본한우(메인) vs 미트박스(타사) vs 금천미트 vs 미트프렌즈 vs 탑미트 vs 본대로</p>
+                </div>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <button type="button" onclick="setGlobalFilter('cattle', '한우거세')" id="btnChartGeose"
+                    class="touch-btn px-2.5 py-1 rounded-lg bg-slate-800 text-white text-xs font-bold">🐂 한우거세</button>
+                  <button type="button" onclick="setGlobalFilter('cattle', '한우암소')" id="btnChartAmso"
+                    class="touch-btn px-2.5 py-1 rounded-lg bg-pink-50 text-pink-800 border border-pink-200 text-xs font-bold">🐄 한우암소</button>
+                  <button type="button" onclick="setGlobalFilter('cattle', 'ALL')" id="btnChartAllCattle"
+                    class="touch-btn px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">전체축종</button>
+                  <span class="text-slate-300">|</span>
+                  <button type="button" onclick="setGlobalFilter('keeping', '냉장')" id="btnChartChilled"
+                    class="touch-btn px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-xs font-bold">💧 냉장</button>
+                  <button type="button" onclick="setGlobalFilter('keeping', '냉동')" id="btnChartFrozen"
+                    class="touch-btn px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">❄️ 냉동</button>
+                  <button type="button" onclick="setGlobalFilter('keeping', 'ALL')" id="btnChartAllKeep"
+                    class="touch-btn px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">전체보관</button>
+                </div>
+              </div>
+              <div class="relative w-full h-[360px] sm:h-[400px]">
+                <canvas id="mainPriceComparisonChart"></canvas>
+              </div>
+            </div>
+
+            <!-- 우측 4 cols: 비교군 수집·재고·최저가 우위 현황 (냉장/냉동 구분필터 적용 시 데이터/도넛차트 실시간 변동!) -->
+            <div class="xl:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-xs p-4 lg:p-6 flex flex-col justify-between">
+              <div>
+                <div class="flex flex-wrap items-center justify-between gap-1.5 mb-2">
+                  <h3 class="text-sm lg:text-base font-extrabold text-slate-900">
+                    🏆 비교군 수집·재고·최저가 우위 현황
+                  </h3>
+                  <!-- 스코어보드 전용 냉장/냉동 구분필터 -->
+                  <div class="flex items-center gap-1">
+                    <button type="button" onclick="setScoreboardKeeping('ALL')" data-skeep="ALL"
+                      class="skeep-btn px-2 py-1 rounded bg-navy-900 text-white text-[11px] font-extrabold">전체</button>
+                    <button type="button" onclick="setScoreboardKeeping('냉장')" data-skeep="냉장"
+                      class="skeep-btn px-2 py-1 rounded bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 text-[11px] font-bold">💧냉장</button>
+                    <button type="button" onclick="setScoreboardKeeping('냉동')" data-skeep="냉동"
+                      class="skeep-btn px-2 py-1 rounded bg-white hover:bg-blue-50 text-blue-800 border border-blue-300 text-[11px] font-bold">❄️냉동</button>
+                  </div>
+                </div>
+                <p id="scoreboardSubDesc" class="text-xs text-slate-500 mb-3">냉장/냉동 필터 적용 시 각 비교군의 수집건수·재고·평균가·최저가 1위 점유율이 즉시 변동됩니다.</p>
+                <div id="platformScoreboardList" class="space-y-2">{{PRE_SCOREBOARD_HTML}}</div>
+              </div>
+              <div class="mt-4 pt-3 border-t border-slate-100">
+                <div class="relative w-full h-[170px]">
+                  <canvas id="stockDistributionChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4) 축산물품질평가원(EKAPE) 한우 지육경락시세 차트 & 상세표 -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 lg:p-6 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <h3 class="text-sm lg:text-base font-extrabold text-slate-900">
+                  📈 축산물품질평가원(EKAPE) 한우 지육경락시세 차트 &amp; 등급별 추이 (거세/암소 · 등급 필터 연동)
+                </h3>
+                <p class="text-xs text-slate-500">상단 ①축종 / ②등급필터 또는 우측 전용 선택기를 변경하면 등급별 경락단가 차트와 시점별 추이가 즉시 반응합니다.</p>
+              </div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <select id="ekapeCattleFilter" onchange="renderEkapeSection()" class="rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-800">
+                  <option value="ALL">한우거세 vs 한우암소 동시비교</option>
+                  <option value="한우거세">🐂 한우거세 단독</option>
+                  <option value="한우암소">🐄 한우암소 단독</option>
+                </select>
+                <select id="ekapeGradeFilter" onchange="renderEkapeSection()" class="rounded-lg border border-amber-300 bg-amber-50/50 px-2.5 py-1.5 text-xs font-bold text-slate-800">
+                  <option value="전국평균">추이 기준: 전국평균</option>
+                  <option value="1++(9)">추이 기준: 1++(9)</option>
+                  <option value="1++(8)">추이 기준: 1++(8)</option>
+                  <option value="1++(7)">추이 기준: 1++(7)</option>
+                  <option value="1+">추이 기준: 1+</option>
+                  <option value="1">추이 기준: 1</option>
+                  <option value="2">추이 기준: 2</option>
+                  <option value="3">추이 기준: 3</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="text-xs font-bold text-slate-700 mb-2">[한우거세 vs 한우암소] 등급별 지육 경락단가 (원/kg)</div>
+                <div class="relative w-full h-[240px]"><canvas id="ekapeGradeBarChart"></canvas></div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="text-xs font-bold text-slate-700 mb-2">[시점별 경락가 추이] 전년동기 → 전월동기 → 전주동요일 → 전일 → 기준일</div>
+                <div class="relative w-full h-[240px]"><canvas id="ekapeTimelineChart"></canvas></div>
+              </div>
+            </div>
+            <div class="sticky-table-wrap max-h-[300px]">
+              <table class="w-full text-left sticky-table text-xs">
+                <thead>
+                  <tr class="bg-navy-900 text-white text-[11px]">
+                    <th class="py-2.5 px-3">축종구분</th>
+                    <th class="py-2.5 px-3">등급</th>
+                    <th class="py-2.5 px-3 text-right">기준일 경락가 (원/kg)</th>
+                    <th class="py-2.5 px-3 text-right">경매두수 (두)</th>
+                    <th class="py-2.5 px-3 text-right">전일 경락가 (증감률)</th>
+                    <th class="py-2.5 px-3 text-right">전주동요일 경락가 (증감률)</th>
+                    <th class="py-2.5 px-3 text-right">전월동기 경락가 (증감률)</th>
+                    <th class="py-2.5 px-3 text-right">전년동기 경락가 (증감률)</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyEkape" class="divide-y divide-slate-200">{{PRE_TBODY_EKAPE}}</tbody>
+              </table>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- ===================================================================== -->
+        <!-- [VIEW 2] ⚖️ 2. 플랫폼 품목 매핑 & 근본한우 비교 (근본한우 메인 대비 타플랫폼 최저·최고가 하이퍼링크) -->
+        <!-- ===================================================================== -->
+        <section id="view-2" class="hidden space-y-5">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 lg:p-6">
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
+              <div>
+                <h2 class="text-base lg:text-lg font-extrabold text-slate-900">
+                  ⚖️ 6대 플랫폼 표준품목 매핑 &amp; '근본한우(메인)' 대비 타플랫폼 최저가·최고가·재고 비교 매트릭스
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  <strong>👑 미트박스-근본한우를 메인 기준</strong>으로 타사 5곳의 단가 편차를 비교하며, 모든 플랫폼의 <strong>최저가(🔗)와 최고가(🔗) 모두 상품 상세페이지 하이퍼링크</strong>가 적용되어 있습니다. (냉장&lt;5, 냉동&lt;10 재고주의 표시)
+                </p>
+              </div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <select id="matrixModeFilter" onchange="renderComparisonMatrix()"
+                  class="rounded-lg border border-indigo-300 bg-indigo-50/50 px-3 py-1.5 text-xs font-extrabold text-indigo-950">
+                  <option value="GRADE">표시단위: 품목 × 등급별 정밀비교 (773조건)</option>
+                  <option value="ITEM">표시단위: 중분류 품목 통합비교 (160품목)</option>
+                </select>
+                <select id="matrixSignalFilter" onchange="renderComparisonMatrix()"
+                  class="rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-800">
+                  <option value="ALL">포지셔닝 전체 보기 (100%)</option>
+                  <option value="GB_ONLY">👑 근본한우 입점 품목/조건만</option>
+                  <option value="danger">🚨 근본한우 단가열위(가격역전)만</option>
+                  <option value="safe">✅ 근본한우 가격우위 품목만</option>
+                  <option value="lowstock">⚠️ 품절/재고주의(냉장&lt;5·냉동&lt;10) 포함만</option>
+                </select>
+                <span id="matrixCountSummary" class="text-xs font-extrabold text-blue-700 num-tab">조회: {{PRE_CNT_GRADES}}건</span>
+              </div>
+            </div>
+
+            <!-- PC 비교 매트릭스 테이블 (상단 헤더 & 좌측 첫 컬럼 Sticky 고정) -->
+            <div class="desktop-table-only sticky-table-wrap mt-4">
+              <table class="w-full text-left sticky-table">
+                <thead>
+                  <tr class="bg-navy-900 text-white text-[11px] uppercase tracking-wider">
+                    <th class="py-3 px-3 rounded-tl-lg">축종 / 등급 / 보관 / 부위 (고정)</th>
+                    <th class="py-3 px-3 gb-main-th text-amber-200 border-x border-red-700">👑 [메인] 미트박스 - 근본한우<br/><span class="text-[10px] font-normal text-red-100">(최저가🔗 / 최고가🔗 / 생산일 / 재고)</span></th>
+                    <th class="py-3 px-3">시장 최저가 1위 / 최고가 (🔗)</th>
+                    <th class="py-3 px-3">미트박스 (타사)<br/><span class="text-[10px] font-normal text-slate-300">(최저🔗 / 최고🔗 / 근본대비)</span></th>
+                    <th class="py-3 px-3">금천미트<br/><span class="text-[10px] font-normal text-slate-300">(최저🔗 / 최고🔗 / 근본대비)</span></th>
+                    <th class="py-3 px-3">미트프렌즈<br/><span class="text-[10px] font-normal text-slate-300">(최저🔗 / 최고🔗 / 근본대비)</span></th>
+                    <th class="py-3 px-3">탑미트<br/><span class="text-[10px] font-normal text-slate-300">(최저🔗 / 최고🔗 / 근본대비)</span></th>
+                    <th class="py-3 px-3">본대로<br/><span class="text-[10px] font-normal text-slate-300">(최저🔗 / 최고🔗 / 근본대비)</span></th>
+                    <th class="py-3 px-3 rounded-tr-lg text-center">근본한우 진단 / 바로가기</th>
+                  </tr>
+                </thead>
+                <tbody id="matrixDesktopBody" class="divide-y divide-slate-200 text-xs">{{PRE_TBODY_MATRIX}}</tbody>
+              </table>
+            </div>
+
+            <div id="matrixMobileCards" class="mobile-cards-only space-y-3 mt-4"></div>
+          </div>
+        </section>
+
+        <!-- ===================================================================== -->
+        <!-- [VIEW 3] 📅 3. 생산일자별 최저·최고가 분석 (근본한우를 메인으로 대비 타플랫폼 상품 데이터 구성) -->
+        <!-- ===================================================================== -->
+        <section id="view-3" class="hidden space-y-6">
+
+          <!-- 생산일자 신선도 구간별 요약 카드 4열 (부위 탭 적용 시 실시간 반응!) -->
+          <div id="prodBucketSummaryCards" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5"></div>
+
+          <!-- 노후 재고 덤핑 착시 경보 & 생산일자 구간별 차트 -->
+          <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+            <div class="xl:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-xs p-4 lg:p-6">
+              <h3 class="text-sm lg:text-base font-extrabold text-slate-900 mb-1">
+                📊 [근본한우 메인 대비] 부위·등급별 생산일자 구간 최저가·최고가 비교 차트
+              </h3>
+              <p class="text-xs text-slate-500 mb-4">
+                👑근본한우 단가를 메인 기준으로 두고, 타사 최저가(신선육/장기재고)·타사 평균가·타사 최고가 스펙트럼을 비교합니다.
+              </p>
+              <div class="relative w-full h-[320px]">
+                <canvas id="prodDateSpreadChart"></canvas>
+              </div>
+            </div>
+
+            <div class="xl:col-span-5 bg-white rounded-2xl border border-amber-300 shadow-xs p-4 lg:p-6">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm lg:text-base font-extrabold text-amber-900">
+                  ⚠️ 장기재고 덤핑 착시 감지 리포트 (최저·최고가 🔗)
+                </h3>
+                <span id="dumpingAlertBadge" class="px-2.5 py-0.5 rounded-full bg-amber-500 text-white text-xs font-extrabold num-tab">{{PRE_DUMP_CNT}}건</span>
+              </div>
+              <p class="text-xs text-slate-600 mb-3">
+                경쟁사 최저가가 숙성후기/장기보관(15일~45일+ 경과) 물량일 경우, 당월 신선육(14일 이내) 최저가와 구분하여 불필요한 단가 인하를 방지합니다.
+              </p>
+              <div id="dumpingAlertCards" class="space-y-2.5 max-h-[300px] overflow-y-auto pr-1"></div>
+            </div>
+          </div>
+
+          <!-- [요청사항 반영] 생산일자별 최저/최고가 분석에서 근본한우를 메인으로 대비 타플랫폼 상품 데이터 구성 -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 lg:p-6">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
+              <div>
+                <h3 class="text-sm lg:text-base font-extrabold text-slate-900">
+                  📅 [👑 근본한우 메인 대비] 타플랫폼 &amp; 생산일자 구간별 최저가(🔗)·최고가(🔗) 대조 매트릭스
+                </h3>
+                <p class="text-xs text-slate-500">
+                  좌측 <strong>👑 근본한우(최저가🔗·최고가🔗·생산일·재고)를 메인 기준</strong>으로 두고, 타플랫폼의 생산일자 구간별(신선육≤14일 vs 숙성/장기≥15일) 및 플랫폼별 최저가(🔗)·최고가(🔗)·근본대비 편차를 1:1 대조합니다.
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <select id="prodDateFilterMode" onchange="renderView3ProductionDate()"
+                  class="rounded-lg border border-red-300 bg-red-50/50 px-3 py-1.5 text-xs font-extrabold text-red-900">
+                  <option value="ALL">전체 품목×등급 보기 (👑근본한우 입점 우선정렬)</option>
+                  <option value="GB_ONLY">👑 근본한우 입점 조건만 집중 대조</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="desktop-table-only sticky-table-wrap mt-3">
+              <table class="w-full text-left sticky-table">
+                <thead>
+                  <tr class="bg-slate-900 text-white text-[11px]">
+                    <th class="py-2.5 px-3 rounded-tl-lg">축종 / 등급 / 보관 / 부위 (고정)</th>
+                    <th class="py-2.5 px-3 gb-main-th text-amber-200 border-x border-red-700">👑 [메인 기준] 근본한우<br/><span class="text-[10px] font-normal text-red-100">(최저가🔗 ~ 최고가🔗 / 생산일 / 재고)</span></th>
+                    <th class="py-2.5 px-3 bg-emerald-950 text-emerald-200">🌱 당월 신선육 (14일 이내)<br/><span class="text-[10px] font-normal text-emerald-100">최저가🔗 ~ 최고가🔗 (브랜드/생산일)</span></th>
+                    <th class="py-2.5 px-3 bg-amber-950 text-amber-200">⏳ 숙성/장기보관 (15일+)<br/><span class="text-[10px] font-normal text-amber-100">최저가🔗 ~ 최고가🔗 (브랜드/생산일)</span></th>
+                    <th class="py-2.5 px-3">타플랫폼별 최저가🔗 ~ 최고가🔗 비교<br/><span class="text-[10px] font-normal text-slate-300">(미트박스·금천·프렌즈·탑·본대로 vs 근본한우)</span></th>
+                    <th class="py-2.5 px-3">시장 전체 최저가 (🔗)</th>
+                    <th class="py-2.5 px-3">시장 전체 최고가 (🔗)</th>
+                    <th class="py-2.5 px-3 rounded-tr-lg">근본한우 대비 진단 / 바로가기</th>
+                  </tr>
+                </thead>
+                <tbody id="prodDateDesktopBody" class="divide-y divide-slate-200 text-xs">{{PRE_TBODY_PRODDATE}}</tbody>
+              </table>
+            </div>
+
+            <div id="prodDateMobileCards" class="mobile-cards-only space-y-3 mt-3"></div>
+          </div>
+        </section>
+
+        <!-- ===================================================================== -->
+        <!-- [VIEW 4] 🔍 4. 전 상품 필터 & 누적 체크 관리 (중복 탭 최대 5개 선택 & 아래 카테고리 차트 반응) -->
+        <!-- ===================================================================== -->
+        <section id="view-4" class="hidden space-y-6">
+
+          <!-- 상단: 중복 탭 설정(최대 5개) 반응형 카테고리 차트 & 중점관리 체크 시계열 차트 -->
+          <div class="bg-white rounded-2xl border border-blue-200 shadow-xs p-4 lg:p-6">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
+              <div>
+                <h2 class="text-base lg:text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                  <span>⭐ 상단 부위 중복 탭(최대 5개) 실시간 반응형 카테고리 차트 &amp; 중점관리 시계열 트래킹</span>
+                  <span id="trackedPanelBadge" class="px-2.5 py-0.5 text-xs rounded-full bg-blue-600 text-white font-extrabold num-tab">0건</span>
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  상단 부위 탭 또는 아래 <strong>📌 중복 탭 설정 바에서 최대 5개 부위를 동시에 선택</strong>하면 아래 <strong>선택 카테고리 플랫폼별 최저·최고가 비교 차트</strong>와 <strong>회차별 시계열 추이 차트</strong>가 즉시 반응합니다.
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="clearMultiParts()"
+                  class="touch-btn px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold">
+                  중복탭 선택 초기화
+                </button>
+                <a href="./data/hanwoo_master_cumulative.xlsx" download="[누적_기초데이터]_한우원물_시세_및_플랫폼비교_마스터.xlsx"
+                  class="touch-btn px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold">
+                  📥 누적 마스터 엑셀 다운로드
+                </a>
+              </div>
+            </div>
+
+            <!-- [요청사항 반영] 중복 탭 설정 (최대 5개 중분류 부위 동시 선택 바 - 줄바꿈으로 한눈에 전체 노출) -->
+            <div class="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-extrabold text-blue-800">📌 중복 탭 설정 (최대 5개 부위 동시 선택 가능 — 클릭 시 아래 2개 카테고리 차트 및 상품 리스트 동시 반응):</span>
+                <span id="multiPartCountBadge" class="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[11px] font-extrabold">선택 3 / 5개</span>
+              </div>
+              <div id="multiPartSelectBar" class="flex flex-wrap items-center gap-1.5"></div>
+            </div>
+
+            <!-- [요청사항 반영] 아래 카테고리 차트 2종 (좌: 선택 최대 5개 부위 6대 플랫폼 최저/최고가 비교 차트, 우: 선택 부위 1~8회차 시계열 단가 추이 차트) -->
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-5 mt-4">
+              <div class="xl:col-span-6 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="text-xs font-extrabold text-slate-800 mb-1.5" id="filteredCategoryChartTitle">
+                  📊 [반응형 카테고리 차트 1] 선택 부위(최대 5개) 플랫폼별 최저가·최고가 실시간 비교
+                </div>
+                <div class="relative w-full h-[260px]">
+                  <canvas id="filteredCategoryChart"></canvas>
+                </div>
+              </div>
+              <div class="xl:col-span-6 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="text-xs font-extrabold text-slate-800 mb-1.5" id="view4ChartTitle">
+                  📈 [반응형 카테고리 차트 2] 선택 부위(최대 5개) 크롤링 회차별(1~8차) 단가 누적 추이
+                </div>
+                <div class="relative w-full h-[260px]">
+                  <canvas id="trackedTimeSeriesChart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- 중점관리 체크 목록 -->
+            <div class="mt-4 pt-3 border-t border-slate-100">
+              <div class="text-xs font-bold text-slate-700 mb-2 flex items-center justify-between">
+                <span>⭐ 현재 중점관리 체크 목록 (아래 표에서 ☑️ 클릭 시 추가 · 최저가/최고가 🔗 클릭 시 쇼핑몰 이동)</span>
+              </div>
+              <div id="trackedQuickList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 max-h-[180px] overflow-y-auto pr-1"></div>
+            </div>
+          </div>
+
+          <!-- 하단: 전 상품 다중 필터 바 & 최저·최고가 하이퍼링크 탐색기 -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 lg:p-6 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 class="text-base font-extrabold text-slate-900">
+                  🔍 6대 플랫폼 전 상품(브랜드×생산일자 코호트) 다중 필터 &amp; 최저가(🔗)·최고가(🔗) 하이퍼링크 탐색기
+                </h3>
+                <p class="text-xs text-slate-500">
+                  품절/주의품목 기준(<strong>냉장 재고 5개 미만 · 냉동 재고 10개 미만</strong>) 필터링 및 <strong>최저가·최고가 금액 클릭 시 실제 쇼핑몰 상세페이지(🔗) 새 탭 이동</strong>
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-slate-600">검색결과: <strong id="filteredProductCount" class="text-blue-600 num-tab">{{PRE_CNT_COHORTS}}</strong>건</span>
+                <button type="button" onclick="resetProductFilters()"
+                  class="touch-btn px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold">
+                  필터 초기화
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              <div>
+                <label class="block text-[11px] font-bold text-indigo-800 mb-1">① 축종구분</label>
+                <select id="fltCattle" onchange="setGlobalFilter('cattle', this.value)" class="w-full rounded-lg border border-indigo-300 bg-white px-2.5 py-2 text-xs font-bold">
+                  <option value="ALL">전체 (거세+암소)</option>
+                  <option value="한우거세">🐂 한우거세</option>
+                  <option value="한우암소">🐄 한우암소</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-amber-800 mb-1">② 등급필터</label>
+                <select id="fltGrade" onchange="setGlobalFilter('grade', this.value)" class="w-full rounded-lg border border-amber-300 bg-amber-50/30 px-2.5 py-2 text-xs font-bold">
+                  <option value="ALL">전체 등급</option>
+                  <option value="1++(9)">1++(9)</option>
+                  <option value="1++(8)">1++(8)</option>
+                  <option value="1++(7)">1++(7)</option>
+                  <option value="1++(불명)">1++(불명)</option>
+                  <option value="1+">1+</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="등외">등외</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-emerald-800 mb-1">③ 보관상태</label>
+                <select id="fltKeeping" onchange="setGlobalFilter('keeping', this.value)" class="w-full rounded-lg border border-emerald-300 bg-white px-2.5 py-2 text-xs font-bold">
+                  <option value="ALL">전체 (💧냉장 + ❄️냉동)</option>
+                  <option value="냉장">💧 냉장</option>
+                  <option value="냉동">❄️ 냉동</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">④ 대분류 (10대 부위)</label>
+                <select id="fltMajor" onchange="setGlobalFilter('major', this.value)" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs font-semibold">
+                  <option value="ALL">전체 대분류</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-blue-800 mb-1">⑤ 중분류 (49종)</label>
+                <select id="fltPart" onchange="setGlobalFilter('part', this.value)" class="w-full rounded-lg border border-blue-300 bg-white px-2.5 py-2 text-xs font-semibold">
+                  <option value="ALL">전체 중분류</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">⑥ 플랫폼 (6개사)</label>
+                <select id="fltPlatform" onchange="applyProductFilters()" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs font-semibold">
+                  <option value="ALL">전체 플랫폼 (6개사)</option>
+                  <option value="근본한우">👑 근본한우 (자사)</option>
+                  <option value="미트박스">미트박스</option>
+                  <option value="금천미트">금천미트</option>
+                  <option value="미트프렌즈">미트프렌즈</option>
+                  <option value="탑미트">탑미트</option>
+                  <option value="본대로">본대로</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-amber-800 mb-1">⑦ 품절/주의 &amp; 생산일</label>
+                <select id="fltStatus" onchange="applyProductFilters()" class="w-full rounded-lg border border-amber-300 bg-amber-50/30 px-2.5 py-2 text-xs font-bold">
+                  <option value="ALL">전체 상품 보기</option>
+                  <option value="LOW_STOCK">⚠️ 품절/주의 (냉장&lt;5 · 냉동&lt;10)</option>
+                  <option value="FRESH_14">🌱 당월 신선육 (14일 이내)</option>
+                  <option value="AGED_15">📦 숙성/일반 (15~30일)</option>
+                  <option value="OLD_31">⏳ 장기재고 (31일+)</option>
+                  <option value="TRACKED">⭐ 중점관리 체크 상품만</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">⑧ 브랜드 / 품목 검색</label>
+                <input id="fltKeyword" type="text" oninput="applyProductFilters()" placeholder="브랜드·품목·생산일 검색..."
+                  class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-blue-500" />
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-slate-600">정렬기준:</span>
+                <select id="fltSort" onchange="applyProductFilters()" class="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-bold">
+                  <option value="PRICE_ASC">1kg 최저단가 낮은순 ↑</option>
+                  <option value="PRICE_DESC">1kg 최저단가 높은순 ↓</option>
+                  <option value="SPREAD_DESC">최고가-최저가 편차 큰순 ↓</option>
+                  <option value="STOCK_ASC">재고 부족순 (냉장&lt;5·냉동&lt;10 우선) ↑</option>
+                  <option value="STOCK_DESC">당일 재고수량 많은순 ↓</option>
+                  <option value="TRACKED_FIRST">⭐ 중점관리 체크 우선</option>
+                </select>
+              </div>
+              <div id="productPaginationBar" class="flex items-center gap-1.5"></div>
+            </div>
+
+            <!-- PC 전 상품 테이블 (상단 헤더 & 좌측 1~3번째 컬럼 Sticky 고정) -->
+            <div class="desktop-table-only sticky-table-wrap">
+              <table class="w-full text-left sticky-table sticky-table-v4">
+                <thead>
+                  <tr class="bg-slate-900 text-white text-[11px]">
+                    <th class="py-2.5 px-2 text-center rounded-tl-lg">체크</th>
+                    <th class="py-2.5 px-2.5">플랫폼 / 보관</th>
+                    <th class="py-2.5 px-2.5">축종 / 등급 / 부위 (고정)</th>
+                    <th class="py-2.5 px-2.5">브랜드 뱃지 (🔗)</th>
+                    <th class="py-2.5 px-2.5 text-right">1kg 최저가 (🔗하이퍼링크)</th>
+                    <th class="py-2.5 px-2.5 text-right">1kg 평균가</th>
+                    <th class="py-2.5 px-2.5 text-right">1kg 최고가 (🔗하이퍼링크)</th>
+                    <th class="py-2.5 px-2.5">생산일자 (경과일 구간)</th>
+                    <th class="py-2.5 px-2.5 text-right">재고 (냉장&lt;5/냉동&lt;10 주의)</th>
+                    <th class="py-2.5 px-2.5">동일구간 최저🔗 / 최고🔗 비교</th>
+                    <th class="py-2.5 px-2.5 text-center rounded-tr-lg">쇼핑몰 바로가기</th>
+                  </tr>
+                </thead>
+                <tbody id="productDesktopBody" class="divide-y divide-slate-200 text-xs">{{PRE_TBODY_COHORTS}}</tbody>
+              </table>
+            </div>
+
+            <div id="productMobileCards" class="mobile-cards-only space-y-3"></div>
+          </div>
+
+        </section>
+
+        <!-- ===================================================================== -->
+        <!-- [VIEW 5] 🗂️ 5. 누적 DB 이력 & 시트 다운로드 -->
+        <!-- ===================================================================== -->
+        <section id="view-5" class="hidden space-y-6">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 lg:p-6 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
+              <div>
+                <h2 class="text-base lg:text-lg font-extrabold text-slate-900">
+                  🗂️ 시계열 누적 아카이브 스냅샷 이력 &amp; 멀티시트 마스터 엑셀 대장
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  모든 크롤링 실행 데이터는 덮어쓰지 않고(Append Only) 수집일시별로 누적 보존됩니다. 행을 클릭하면 해당 회차 스냅샷으로 즉시 전환됩니다.
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="triggerLiveCrawl()"
+                  class="touch-btn px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-xs">
+                  🔄 신규 크롤링 스냅샷 추가 (Append)
+                </button>
+                <a href="./data/hanwoo_master_cumulative.xlsx" download="[누적_기초데이터]_한우원물_시세_및_플랫폼비교_마스터.xlsx"
+                  class="touch-btn px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs">
+                  📥 최신 한우_누적마스터.xlsx 다운로드
+                </a>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <span class="text-[11px] font-bold text-blue-600 uppercase">Append-Only 시계열 아카이브</span>
+                <h4 class="text-sm font-extrabold text-slate-900 mt-1">총 {{PRE_RUN_NO}}회차 누적 보존</h4>
+                <p class="text-xs text-slate-600 mt-1">
+                  6대 플랫폼(근본한우·미트박스·금천·미트프렌즈·탑미트·본대로) 원물 최저가·최고가·생산일자·브랜드와 축평원 지육경락시세를 시계열로 누적 관리합니다.
+                </p>
+              </div>
+              <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <span class="text-[11px] font-bold text-emerald-600 uppercase">최저·최고가 하이퍼링크 &amp; 재고주의 기준</span>
+                <h4 class="text-sm font-extrabold text-slate-900 mt-1">냉장 5개 미만 · 냉동 10개 미만 자동 감지</h4>
+                <p class="text-xs text-slate-600 mt-1">
+                  모든 시트와 웹 화면에서 최저가·최고가 양방향 상품 URL 하이퍼링크(🔗)와 보관상태별 품절/재고주의 기준이 일관되게 적용됩니다.
+                </p>
+              </div>
+              <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <span class="text-[11px] font-bold text-purple-600 uppercase">평일 정기 스케줄러 가동</span>
+                <h4 class="text-sm font-extrabold text-slate-900 mt-1">월~금 09:30 · 16:30 자동수집 (토·일 제외)</h4>
+                <p class="text-xs text-slate-600 mt-1">
+                  토요일·일요일을 제외한 매주 월요일~금요일 오전 9시 30분과 오후 4시 30분에 6대 플랫폼 자동 크롤링 및 대시보드 누적이 실행됩니다.
+                </p>
+              </div>
+            </div>
+
+            <div class="desktop-table-only sticky-table-wrap mt-2">
+              <table class="w-full text-left sticky-table">
+                <thead>
+                  <tr class="bg-navy-900 text-white text-[11px]">
+                    <th class="py-3 px-3 rounded-tl-lg">회차 (Run ID)</th>
+                    <th class="py-3 px-3">수집 기준일시</th>
+                    <th class="py-3 px-3">업데이트 시각</th>
+                    <th class="py-3 px-3 text-right">총 원물 옵션/박스</th>
+                    <th class="py-3 px-3 text-right">👑 근본한우</th>
+                    <th class="py-3 px-3 text-right">미트박스</th>
+                    <th class="py-3 px-3 text-right">금천미트</th>
+                    <th class="py-3 px-3 text-right">미트프렌즈</th>
+                    <th class="py-3 px-3 text-right">탑미트</th>
+                    <th class="py-3 px-3 text-right">본대로</th>
+                    <th class="py-3 px-3 text-center">품목수 / 등급조건</th>
+                    <th class="py-3 px-3 text-center">근본한우 우위율</th>
+                    <th class="py-3 px-3 text-right rounded-tr-lg">거세 / 암소 지육평균가</th>
+                  </tr>
+                </thead>
+                <tbody id="runsDesktopBody" class="divide-y divide-slate-200 text-xs">{{PRE_TBODY_HISTORY}}</tbody>
+              </table>
+            </div>
+
+            <div id="runsMobileCards" class="mobile-cards-only space-y-3"></div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ===================== 모바일 하단 고정 5-탭바 ===================== -->
+  <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg"
+    style="padding-bottom: var(--safe-bottom);">
+    <div class="grid grid-cols-5 h-16">
+      <button type="button" onclick="switchView(1)" data-bnav="1"
+        class="bottom-tab-item active flex flex-col items-center justify-center gap-0.5 text-[11px]">
+        <span class="text-base">📊</span>
+        <span class="truncate">1.대시보드</span>
+      </button>
+      <button type="button" onclick="switchView(2)" data-bnav="2"
+        class="bottom-tab-item flex flex-col items-center justify-center gap-0.5 text-[11px]">
+        <span class="text-base">⚖️</span>
+        <span class="truncate">2.품목비교</span>
+      </button>
+      <button type="button" onclick="switchView(3)" data-bnav="3"
+        class="bottom-tab-item flex flex-col items-center justify-center gap-0.5 text-[11px]">
+        <span class="text-base">📅</span>
+        <span class="truncate">3.생산일자</span>
+      </button>
+      <button type="button" onclick="switchView(4)" data-bnav="4"
+        class="bottom-tab-item relative flex flex-col items-center justify-center gap-0.5 text-[11px]">
+        <span class="text-base">🔍</span>
+        <span class="truncate">4.필터/체크</span>
+        <span id="bottomTrackedBadge" class="absolute top-1 right-2 px-1.5 py-0.2 text-[9px] rounded-full bg-blue-600 text-white font-bold">0</span>
+      </button>
+      <button type="button" onclick="switchView(5)" data-bnav="5"
+        class="bottom-tab-item flex flex-col items-center justify-center gap-0.5 text-[11px]">
+        <span class="text-base">🗂️</span>
+        <span class="truncate">5.DB/엑셀</span>
+      </button>
+    </div>
+  </nav>
+  <!-- ===================== 프론트엔드 상태관리 & Chart.js & 전체 요청사항 연동 스크립트 ===================== -->
+  <script>
+    const ARCHIVE = {{EMBEDDED_JSON}};
+    const PLATFORMS = ["근본한우", "미트박스", "금천미트", "미트프렌즈", "탑미트", "본대로"];
+    const COMP_PLATFORMS = ["미트박스", "금천미트", "미트프렌즈", "탑미트", "본대로"];
+    const PLAT_META = [
+      { key: "근본한우", label: "👑 미트박스 - 근본한우", short: "👑근본한우", color: "#DC2626" },
+      { key: "미트박스", label: "미트박스 (타사)", short: "미트박스", color: "#F97316" },
+      { key: "금천미트", label: "금천미트", short: "금천미트", color: "#2563EB" },
+      { key: "미트프렌즈", label: "미트프렌즈", short: "미트프렌즈", color: "#059669" },
+      { key: "탑미트", label: "탑미트", short: "탑미트", color: "#7C3AED" },
+      { key: "본대로", label: "본대로", short: "본대로", color: "#0891B2" }
+    ];
+    const VIEW_TITLES = {
+      1: "📊 1. 실시간 문제해결 & 종합 대시보드",
+      2: "⚖️ 2. 플랫폼 품목 매핑 & 근본한우 비교",
+      3: "📅 3. 생산일자별 최저·최고가 분석",
+      4: "🔍 4. 전 상품 필터 & 누적 체크 관리",
+      5: "🗂️ 5. 누적 DB 이력 & 시트 다운로드"
+    };
+
+    let STATE = {
+      currentSnapIdx: Math.max(0, ARCHIVE.snapshots.length - 1),
+      currentView: 1,
+      cattle: "ALL",
+      grade: "ALL",
+      keeping: "ALL",
+      major: "ALL",
+      part: "ALL",
+      briefingKeeping: "ALL",    // 실시간 문제해결 브리핑 전용 냉장/냉동 구분필터
+      scoreboardKeeping: "ALL",  // 비교군 수집-재고-최저가 우위현황 전용 냉장/냉동 구분필터
+      multiParts: ["등심", "안심", "채끝"], // 전상품 필터 중복 탭 설정 (최대 5개)
+      trackedKeys: new Set(JSON.parse(localStorage.getItem("hanwoo_tracked_keys_v1") || "[]")),
+      sidebarCollapsed: false,
+      densityCompact: false,
+      charts: {
+        mainBar: null,
+        stockDoughnut: null,
+        ekapeGradeBar: null,
+        ekapeTimeline: null,
+        prodDateSpread: null,
+        filteredCategory: null,
+        trackedLine: null
+      }
+    };
+
+    // [요청사항 반영] 품절/주의품목 기준: 냉장 재고 5개 미만 / 냉동 재고 10개 미만
+    function getLowStockThreshold(keeping) {
+      return keeping === "냉장" ? 5 : 10;
+    }
+
+    function isLowStockQty(qty, keeping) {
+      const q = Number(qty || 0);
+      return q >= 0 && q < getLowStockThreshold(keeping);
+    }
+
+    function fmtNum(n) {
+      if (n === null || n === undefined || n === "" || isNaN(Number(n))) return "-";
+      return Number(n).toLocaleString("ko-KR");
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function expandUrl(u) {
+      if (!u || typeof u !== "string") return "";
+      if (u.startsWith("@mb:")) return "https://www.meatbox.co.kr/fo/product/productViewPage.do?productSeq=" + u.slice(4);
+      if (u.startsWith("@mf:")) return "https://www.meatfriends.co.kr/product/productView.do?prdNo=" + u.slice(4);
+      if (u.startsWith("@tm:")) return "https://www.topmeat.co.kr/shop/item.php?it_id=" + u.slice(4);
+      if (u.startsWith("@gc:")) return "https://www.ekcm.co.kr/pd/goods_view?goodsId=" + u.slice(4);
+      if (u.startsWith("@bd:")) return "https://www.bondaero.kr/product/detail/" + u.slice(4);
+      return u;
+    }
+
+    // [요청사항 반영] 최저가와 최고가 모두 상품 하이퍼링크(🔗) 적용
+    function fmtLink(url, text, clsName) {
+      const fullUrl = expandUrl(url);
+      if (!fullUrl || !fullUrl.startsWith("http")) return escapeHtml(text);
+      const cls = clsName || "font-bold text-blue-700 hover:underline";
+      return `<a href="${escapeHtml(fullUrl)}" target="_blank" rel="noopener noreferrer" class="${cls}" onclick="event.stopPropagation();">${escapeHtml(text)} 🔗</a>`;
+    }
+
+    function keepingBadge(keeping) {
+      if (keeping === "냉동") {
+        return `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] font-bold badge-frozen">❄️ 냉동</span>`;
+      }
+      return `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] font-bold badge-chilled">💧 냉장</span>`;
+    }
+
+    function cattleBadge(cattle) {
+      if (cattle === "한우암소") {
+        return `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold badge-amso">🐄 암소</span>`;
+      }
+      return `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold badge-geose">🐂 거세</span>`;
+    }
+
+    function gradeBadge(grade) {
+      if (!grade || grade === "-") return "";
+      return `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-extrabold badge-grade">${escapeHtml(grade)}</span>`;
+    }
+
+    function brandBadge(brand, isGeunbon, url) {
+      const fullUrl = expandUrl(url);
+      const inner = (isGeunbon || (brand && brand.includes("근본한우")))
+        ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-extrabold badge-geunbon">👑 ${escapeHtml(brand || "근본한우")} 🔗</span>`
+        : `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100">${escapeHtml(brand || "-")} 🔗</span>`;
+      if (fullUrl && fullUrl.startsWith("http")) {
+        return `<a href="${escapeHtml(fullUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation();">${inner}</a>`;
+      }
+      return inner;
+    }
+
+    function showToast(msg, icon = "✅") {
+      const el = document.getElementById("toastBanner");
+      if (!el) return;
+      document.getElementById("toastIcon").textContent = icon;
+      document.getElementById("toastMessage").textContent = msg;
+      el.classList.remove("hidden");
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => el.classList.add("hidden"), 2800);
+    }
+
+    function toggleMobileDrawer(open) {
+      const backdrop = document.getElementById("mobileDrawerBackdrop");
+      const panel = document.getElementById("mobileDrawerPanel");
+      if (!backdrop || !panel) return;
+      if (open) {
+        backdrop.classList.remove("hidden");
+        requestAnimationFrame(() => {
+          backdrop.classList.remove("opacity-0");
+          panel.classList.remove("-translate-x-full");
+        });
+      } else {
+        backdrop.classList.add("opacity-0");
+        panel.classList.add("-translate-x-full");
+        setTimeout(() => backdrop.classList.add("hidden"), 240);
+      }
+    }
+
+    function toggleSidebarCollapse() {
+      STATE.sidebarCollapsed = !STATE.sidebarCollapsed;
+      document.body.classList.toggle("sidebar-collapsed", STATE.sidebarCollapsed);
+      const iconEl = document.getElementById("sidebarToggleIcon");
+      const txtEl = document.getElementById("sidebarToggleText");
+      const btnEl = document.getElementById("btnToggleSidebar");
+      if (iconEl && txtEl && btnEl) {
+        if (STATE.sidebarCollapsed) {
+          iconEl.textContent = "▶";
+          txtEl.textContent = "사이드바 펼치기";
+          btnEl.className = "hidden lg:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold border border-blue-700 transition no-print";
+        } else {
+          iconEl.textContent = "◀";
+          txtEl.textContent = "와이드 화면";
+          btnEl.className = "hidden lg:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold border border-slate-300 transition no-print";
+        }
+      }
+      setTimeout(() => {
+        Object.values(STATE.charts).forEach(ch => { if (ch) ch.resize(); });
+      }, 240);
+    }
+
+    function toggleDensityMode() {
+      STATE.densityCompact = !STATE.densityCompact;
+      document.body.classList.toggle("density-compact", STATE.densityCompact);
+      const btn = document.getElementById("btnToggleDensity");
+      if (btn) {
+        btn.className = STATE.densityCompact
+          ? "hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-navy-900 text-white border border-navy-900 text-xs font-bold transition"
+          : "hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition";
+        btn.innerHTML = STATE.densityCompact ? "<span>⚡ 고밀도 뷰 ON</span>" : "<span>⚡ 고밀도(엑셀형) 뷰</span>";
+      }
+    }
+
+    function switchView(viewNum) {
+      STATE.currentView = viewNum;
+      for (let i = 1; i <= 5; i++) {
+        const sec = document.getElementById(`view-${i}`);
+        if (sec) sec.classList.toggle("hidden", i !== viewNum);
+      }
+      document.querySelectorAll("[data-nav]").forEach(btn => {
+        btn.classList.toggle("active", Number(btn.getAttribute("data-nav")) === viewNum);
+      });
+      document.querySelectorAll("[data-bnav]").forEach(btn => {
+        btn.classList.toggle("active", Number(btn.getAttribute("data-bnav")) === viewNum);
+      });
+      const badge = document.getElementById("currentViewBadge");
+      if (badge) badge.textContent = VIEW_TITLES[viewNum] || "";
+      syncFilterControlsUI();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setTimeout(() => {
+        Object.values(STATE.charts).forEach(ch => { if (ch) ch.resize(); });
+      }, 80);
+    }
+
+    function onChangeRunSnapshot(idxVal) {
+      const idx = Number(idxVal);
+      if (isNaN(idx) || idx < 0 || idx >= ARCHIVE.snapshots.length) return;
+      STATE.currentSnapIdx = idx;
+      const pcSel = document.getElementById("pcRunSelector");
+      const mobSel = document.getElementById("mobileRunSelector");
+      if (pcSel) pcSel.value = idx;
+      if (mobSel) mobSel.value = idx;
+      populateDynamicFilterOptions();
+      renderAll();
+      const sn = ARCHIVE.snapshots[idx];
+      showToast(`#${idx + 1}회차 (${sn.collected_date}) 스냅샷으로 전환되었습니다.`, "⏱️");
+    }
+
+    // ===================== 한우 필수 5대 필터 + 부위 탭(단일 & 최대 5개 중복 선택) 제어 =====================
+    function setGlobalFilter(field, val) {
+      STATE[field] = val || "ALL";
+      if (field === "keeping") {
+        // 상단 글로벌 보관상태를 변경하면 브리핑/스코어보드 보관상태도 함께 동기화
+        STATE.briefingKeeping = STATE.keeping;
+        STATE.scoreboardKeeping = STATE.keeping;
+      }
+      if (field === "major") {
+        STATE.part = "ALL";
+        updatePartDropdownOptions();
+      }
+      if (field === "part" && val && val !== "ALL") {
+        if (!STATE.multiParts.includes(val)) {
+          if (STATE.multiParts.length >= 5) STATE.multiParts.shift();
+          STATE.multiParts.push(val);
+        }
+      }
+      syncFilterControlsUI();
+      renderAll();
+    }
+
+    // [요청사항 반영] 상단 부위 탭 클릭 시:
+    // - View 4(전 상품 필터)에서는 최대 5개 중복 탭 토글로 동작하여 아래 카테고리 차트 2종과 리스트가 반응
+    // - View 1~3에서는 해당 부위 탭 선택 시 상단 4개의 카테고리 KPI 카드와 브리핑·매트릭스·생산일자 분석이 즉시 반응
+    function onClickTopPartTab(partName) {
+      if (partName === "ALL") {
+        STATE.part = "ALL";
+        syncFilterControlsUI();
+        renderAll();
+        showToast("전체 중분류 부위로 전환되었습니다. 상단 4개 카테고리 데이터가 갱신되었습니다.", "🎯");
+        return;
+      }
+      if (STATE.currentView === 4) {
+        toggleMultiPartChip(partName);
+        return;
+      }
+      STATE.part = (STATE.part === partName) ? "ALL" : partName;
+      if (STATE.part !== "ALL" && !STATE.multiParts.includes(STATE.part)) {
+        if (STATE.multiParts.length >= 5) STATE.multiParts.shift();
+        STATE.multiParts.push(STATE.part);
+      }
+      syncFilterControlsUI();
+      renderAll();
+      showToast(
+        STATE.part === "ALL"
+          ? "전체 부위로 복귀했습니다."
+          : `[${STATE.part}] 부위 탭 적용 → 상단 4개 카테고리 카드 및 차트 데이터가 즉시 반영되었습니다.`,
+        "🎯"
+      );
+    }
+
+    // [요청사항 반영] 실시간 문제해결 브리핑 전용 냉장/냉동 구분필터
+    function setBriefingKeeping(val) {
+      STATE.briefingKeeping = val || "ALL";
+      document.querySelectorAll(".bkeep-btn").forEach(btn => {
+        const k = btn.getAttribute("data-bkeep");
+        const act = k === STATE.briefingKeeping;
+        if (act) {
+          btn.className = k === "냉장"
+            ? "bkeep-btn px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-extrabold shadow-2xs"
+            : (k === "냉동"
+              ? "bkeep-btn px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-extrabold shadow-2xs"
+              : "bkeep-btn px-3 py-1.5 rounded-lg bg-navy-900 text-white text-xs font-extrabold shadow-2xs");
+        } else {
+          btn.className = "bkeep-btn px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold";
+        }
+      });
+      renderView1Dashboard();
+      showToast(
+        val === "ALL" ? "브리핑: 냉장+냉동 전체 카테고리를 표시합니다." : `브리핑: [${val}] 카테고리 전용 알림으로 전환되었습니다.`,
+        val === "냉동" ? "❄️" : "💧"
+      );
+    }
+
+    // [요청사항 반영] 비교군 수집·재고·최저가 우위 현황 전용 냉장/냉동 구분필터
+    function setScoreboardKeeping(val) {
+      STATE.scoreboardKeeping = val || "ALL";
+      document.querySelectorAll(".skeep-btn").forEach(btn => {
+        const k = btn.getAttribute("data-skeep");
+        const act = k === STATE.scoreboardKeeping;
+        if (act) {
+          btn.className = k === "냉장"
+            ? "skeep-btn px-2 py-1 rounded bg-emerald-600 text-white text-[11px] font-extrabold"
+            : (k === "냉동"
+              ? "skeep-btn px-2 py-1 rounded bg-blue-600 text-white text-[11px] font-extrabold"
+              : "skeep-btn px-2 py-1 rounded bg-navy-900 text-white text-[11px] font-extrabold");
+        } else {
+          btn.className = "skeep-btn px-2 py-1 rounded bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-[11px] font-bold";
+        }
+      });
+      renderView1Dashboard();
+      showToast(
+        val === "ALL" ? "비교군 우위현황: 냉장+냉동 전체 데이터로 집계합니다." : `비교군 우위현황: [${val}] 데이터 기준으로 재고·최저가 우위가 변동되었습니다.`,
+        "🏆"
+      );
+    }
+
+    function resetQuickAndAllFilters() {
+      STATE.cattle = "ALL";
+      STATE.grade = "ALL";
+      STATE.keeping = "ALL";
+      STATE.major = "ALL";
+      STATE.part = "ALL";
+      STATE.briefingKeeping = "ALL";
+      STATE.scoreboardKeeping = "ALL";
+      STATE.multiParts = ["등심", "안심", "채끝"];
+      const fPlat = document.getElementById("fltPlatform");
+      if (fPlat) fPlat.value = "ALL";
+      const fSt = document.getElementById("fltStatus");
+      if (fSt) fSt.value = "ALL";
+      const fKw = document.getElementById("fltKeyword");
+      if (fKw) fKw.value = "";
+      const matSig = document.getElementById("matrixSignalFilter");
+      if (matSig) matSig.value = "ALL";
+      updatePartDropdownOptions();
+      syncFilterControlsUI();
+      setBriefingKeeping("ALL");
+      setScoreboardKeeping("ALL");
+      renderAll();
+      showToast("모든 필터 및 중복 탭 선택이 초기화되었습니다.", "🔄");
+    }
+
+    function resetProductFilters() {
+      resetQuickAndAllFilters();
+    }
+
+    function populateDynamicFilterOptions() {
+      const snap = ARCHIVE.snapshots[STATE.currentSnapIdx];
+      const majors = Array.from(new Set(snap.full_items.map(x => x.major).filter(Boolean)));
+      ["globalMajorSelect", "fltMajor"].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = `<option value="ALL">전체 대분류 (${majors.length}개)</option>` +
+          majors.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join("");
+        el.value = majors.includes(STATE.major) ? STATE.major : "ALL";
+      });
+      updatePartDropdownOptions();
+    }
+
+    function updatePartDropdownOptions() {
+      const snap = ARCHIVE.snapshots[STATE.currentSnapIdx];
+      const items = STATE.major === "ALL"
+        ? snap.full_items
+        : snap.full_items.filter(x => x.major === STATE.major);
+      const parts = Array.from(new Set(items.map(x => x.part).filter(Boolean)));
+      if (STATE.part !== "ALL" && !parts.includes(STATE.part)) {
+        STATE.part = "ALL";
+      }
+      ["globalPartSelect", "fltPart"].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = `<option value="ALL">전체 중분류 (${parts.length}종)</option>` +
+          parts.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join("");
+        el.value = STATE.part;
+      });
+      renderQuickPartChips(parts);
+      renderMultiPartSelectBar(parts);
+    }
+
+    // [요청사항 반영] 상단에 모든 부위 탭이 가로스크롤 없이 한번에 보이도록 flex-wrap 렌더링
+    function renderQuickPartChips(parts) {
+      const bar = document.getElementById("quickPartChipBar");
+      if (!bar) return;
+      const allParts = ["ALL", ...parts];
+      bar.innerHTML = allParts.map(p => {
+        const isMultiMode = STATE.currentView === 4;
+        const isAct = isMultiMode
+          ? (p === "ALL" ? STATE.multiParts.length === 0 : STATE.multiParts.includes(p))
+          : (STATE.part === p);
+        const cls = isAct
+          ? (isMultiMode && p !== "ALL" ? "multi-active" : "active")
+          : "bg-white hover:bg-slate-100 text-slate-700 border-slate-300";
+        const lbl = p === "ALL" ? `전체(${parts.length}종)` : (isMultiMode && isAct ? `✓ ${p}` : p);
+        return `<button type="button" onclick="onClickTopPartTab('${escapeHtml(p)}')"
+          class="part-chip ${cls} px-2 py-0.5 rounded-md border text-[11px] font-bold">
+          ${escapeHtml(lbl)}
+        </button>`;
+      }).join("");
+    }
+
+    function renderMultiPartSelectBar(parts) {
+      const bar = document.getElementById("multiPartSelectBar");
+      if (!bar) return;
+      const badge = document.getElementById("multiPartCountBadge");
+      if (badge) badge.textContent = `선택 ${STATE.multiParts.length} / 최대 5개`;
+      bar.innerHTML = parts.map(p => {
+        const active = STATE.multiParts.includes(p);
+        return `<button type="button" onclick="toggleMultiPartChip('${escapeHtml(p)}')"
+          class="part-chip ${active ? "multi-active" : "bg-white hover:bg-slate-100 text-slate-700 border-slate-300"} px-2.5 py-1 rounded-md border text-[11px] font-bold">
+          ${active ? "✓ " : ""}${escapeHtml(p)}
+        </button>`;
+      }).join("");
+    }
+
+    function clearMultiParts() {
+      STATE.multiParts = [];
+      STATE.part = "ALL";
+      syncFilterControlsUI();
+      renderAll();
+      showToast("중복 선택 탭이 초기화되었습니다.", "🔄");
+    }
+
+    function toggleMultiPartChip(partName) {
+      const idx = STATE.multiParts.indexOf(partName);
+      if (idx >= 0) {
+        STATE.multiParts.splice(idx, 1);
+      } else {
+        if (STATE.multiParts.length >= 5) {
+          showToast("중복 탭 설정은 최대 5개 부위까지 선택 가능합니다.", "⚠️");
+          return;
+        }
+        STATE.multiParts.push(partName);
+      }
+      const snap = ARCHIVE.snapshots[STATE.currentSnapIdx];
+      const items = STATE.major === "ALL" ? snap.full_items : snap.full_items.filter(x => x.major === STATE.major);
+      const parts = Array.from(new Set(items.map(x => x.part).filter(Boolean)));
+      renderQuickPartChips(parts);
+      renderMultiPartSelectBar(parts);
+      renderView1Dashboard();
+      renderView3ProductionDate();
+      renderTrackedPanel();
+      applyProductFilters();
+    }
+
+    function syncFilterControlsUI() {
+      document.querySelectorAll("#quickCattleChipBar [data-qcattle]").forEach(btn => {
+        const v = btn.getAttribute("data-qcattle");
+        const act = v === STATE.cattle;
+        btn.className = act
+          ? (v === "한우암소" ? "qcattle-chip px-2 py-0.5 rounded-lg border text-xs font-extrabold bg-pink-600 text-white border-pink-700"
+            : (v === "한우거세" ? "qcattle-chip px-2 py-0.5 rounded-lg border text-xs font-extrabold bg-indigo-700 text-white border-indigo-800"
+              : "qcattle-chip px-2 py-0.5 rounded-lg border text-xs font-extrabold bg-navy-900 text-white border-navy-900"))
+          : "qcattle-chip px-2 py-0.5 rounded-lg border text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 border-slate-300";
+      });
+      ["fltCattle"].forEach(id => { const el = document.getElementById(id); if (el) el.value = STATE.cattle; });
+      const ekCattle = document.getElementById("ekapeCattleFilter");
+      if (ekCattle) ekCattle.value = STATE.cattle;
+
+      const bGeose = document.getElementById("btnChartGeose");
+      const bAmso = document.getElementById("btnChartAmso");
+      const bAllC = document.getElementById("btnChartAllCattle");
+      if (bGeose) bGeose.className = STATE.cattle === "한우거세" ? "touch-btn px-2.5 py-1 rounded-lg bg-indigo-700 text-white text-xs font-bold" : "touch-btn px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold";
+      if (bAmso) bAmso.className = STATE.cattle === "한우암소" ? "touch-btn px-2.5 py-1 rounded-lg bg-pink-600 text-white text-xs font-bold" : "touch-btn px-2.5 py-1 rounded-lg bg-pink-50 text-pink-800 border border-pink-200 text-xs font-bold";
+      if (bAllC) bAllC.className = STATE.cattle === "ALL" ? "touch-btn px-2.5 py-1 rounded-lg bg-navy-900 text-white text-xs font-bold" : "touch-btn px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold";
+
+      ["globalGradeSelect", "fltGrade"].forEach(id => { const el = document.getElementById(id); if (el) el.value = STATE.grade; });
+      const ekGrade = document.getElementById("ekapeGradeFilter");
+      if (ekGrade && STATE.grade !== "ALL" && Array.from(ekGrade.options).some(o => o.value === STATE.grade)) {
+        ekGrade.value = STATE.grade;
+      }
+
+      document.querySelectorAll("#quickKeepingChipBar [data-qkeep]").forEach(btn => {
+        const v = btn.getAttribute("data-qkeep");
+        const act = v === STATE.keeping;
+        btn.className = act
+          ? (v === "냉장" ? "qkeep-chip px-2 py-0.5 rounded-lg border text-xs font-extrabold bg-emerald-600 text-white border-emerald-700"
+            : (v === "냉동" ? "qkeep-chip px-2 py-0.5 rounded-lg border text-xs font-extrabold bg-blue-600 text-white border-blue-700"
+              : "qkeep-chip px-2 py-0.5 rounded-lg border text-xs font-extrabold bg-navy-900 text-white border-navy-900"))
+          : "qkeep-chip px-2 py-0.5 rounded-lg border text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 border-slate-300";
+      });
+      ["fltKeeping"].forEach(id => { const el = document.getElementById(id); if (el) el.value = STATE.keeping; });
+      const bChilled = document.getElementById("btnChartChilled");
+      const bFrozen = document.getElementById("btnChartFrozen");
+      const bAllK = document.getElementById("btnChartAllKeep");
+      if (bChilled) bChilled.className = STATE.keeping === "냉장" ? "touch-btn px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-xs font-bold" : "touch-btn px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold";
+      if (bFrozen) bFrozen.className = STATE.keeping === "냉동" ? "touch-btn px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold" : "touch-btn px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold";
+      if (bAllK) bAllK.className = STATE.keeping === "ALL" ? "touch-btn px-2.5 py-1 rounded-lg bg-navy-900 text-white text-xs font-bold" : "touch-btn px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold";
+
+      ["globalMajorSelect", "fltMajor"].forEach(id => { const el = document.getElementById(id); if (el) el.value = STATE.major; });
+      ["globalPartSelect", "fltPart"].forEach(id => { const el = document.getElementById(id); if (el) el.value = STATE.part; });
+
+      const snap = ARCHIVE.snapshots[STATE.currentSnapIdx];
+      const items = STATE.major === "ALL" ? snap.full_items : snap.full_items.filter(x => x.major === STATE.major);
+      const parts = Array.from(new Set(items.map(x => x.part).filter(Boolean)));
+      renderQuickPartChips(parts);
+      renderMultiPartSelectBar(parts);
+    }
+
+    function matchesGlobal5Filters(row, isItemRow = false, customKeeping = null) {
+      const effKeep = customKeeping !== null ? customKeeping : STATE.keeping;
+      if (STATE.cattle !== "ALL" && row.cattle !== STATE.cattle) return false;
+      if (effKeep !== "ALL" && row.keeping !== effKeep) return false;
+      if (STATE.major !== "ALL" && row.major !== STATE.major) return false;
+      if (STATE.part !== "ALL" && row.part !== STATE.part) return false;
+      if (STATE.grade !== "ALL") {
+        if (isItemRow) {
+          const gList = String(row.grades || "").split(",").map(s => s.trim());
+          if (!gList.includes(STATE.grade)) return false;
+        } else {
+          if (row.grade !== STATE.grade) return false;
+        }
+      }
+      return true;
+    }
+
+    // ===================== VIEW 1: 실시간 문제해결 & 종합 대시보드 =====================
+    function renderView1Dashboard() {
+      const snap = ARCHIVE.snapshots[STATE.currentSnapIdx];
+      // 1) 상단 4개 KPI 카테고리 카드: 부위 탭(STATE.part) 및 5대 필터 적용 시 실시간 반응!
+      const filteredGrades = snap.grade_rows.filter(g => matchesGlobal5Filters(g, false));
+      const filteredItems = snap.full_items.filter(it => matchesGlobal5Filters(it, true));
+
+      document.getElementById("topCollectedAt").textContent = snap.collected_date;
+      document.getElementById("topRunId").textContent = `#${STATE.currentSnapIdx + 1}`;
+      document.getElementById("mobileSubStatus").textContent = `${snap.collected_date} (#${STATE.currentSnapIdx + 1} | ${fmtNum(snap.total_raw_rows)}건)`;
+      document.getElementById("sidebarCarcassInfo").textContent = `거세 ${fmtNum(snap.geose_carcass_avg)} / 암소 ${fmtNum(snap.amso_carcass_avg)}`;
+      document.getElementById("sidebarDroppedCnt").textContent = `${fmtNum(snap.verified_changed_count || 2734)}건 보정`;
+
+      const kpi1TitleEl = document.getElementById("kpi1Title");
+      if (kpi1TitleEl) {
+        kpi1TitleEl.textContent = STATE.part !== "ALL"
+          ? `[${STATE.part}] 선택 부위 유효 원물 현황`
+          : "6대 플랫폼 유효 한우 원물 (세절제외)";
+      }
+
+      const totalFilteredCnt = filteredGrades.reduce((acc, gr) => {
+        return acc + PLATFORMS.reduce((s, p) => s + (gr.platforms?.[p]?.cnt || 0), 0);
+      }, 0);
+      const isUnfiltered = STATE.cattle === "ALL" && STATE.grade === "ALL" && STATE.keeping === "ALL" && STATE.major === "ALL" && STATE.part === "ALL";
+      document.getElementById("kpiTotalSku").textContent = fmtNum(isUnfiltered ? snap.total_raw_rows : totalFilteredCnt);
+      document.getElementById("kpiWonmulSku").textContent = fmtNum(filteredItems.length);
+      document.getElementById("kpiGradeCondCnt").textContent = fmtNum(filteredGrades.length);
+      document.getElementById("kpiCarcassSummary").textContent = `거세 ${fmtNum(snap.geose_carcass_avg)}원 · 암소 ${fmtNum(snap.amso_carcass_avg)}원`;
+
+      // 2) 실시간 문제해결 브리핑 (브리핑 전용 냉장/냉동 구분필터 STATE.briefingKeeping 반영!)
+      const effBriefKeep = STATE.briefingKeeping !== "ALL" ? STATE.briefingKeeping : STATE.keeping;
+      const briefingGrades = snap.grade_rows.filter(g => matchesGlobal5Filters(g, false, effBriefKeep));
+
+      const redAlerts = [];
+      const amberWarnings = [];
+      const emeraldOpps = [];
+      let lowStockTotalCnt = 0;
+      let dumpingTotalCnt = 0;
+
+      briefingGrades.forEach(gr => {
+        const gb = gr.platforms?.["근본한우"];
+        const gbAvg = gb?.avg;
+        const gbMin = gb?.min || gbAvg;
+        const gbMax = gb?.max || gbAvg;
+        const compMin = gr.comp_min || gr.comp_avg;
+        const compMax = gr.comp_max || gr.comp_avg;
+        const compAvg = gr.comp_avg;
+
+        if (gbAvg && compAvg) {
+          if (gbAvg > compAvg) {
+            redAlerts.push({
+              cattle: gr.cattle, grade: gr.grade, keeping: gr.keeping, part: gr.part,
+              gbMin, gbMax, gbAvg, gbDate: gb.b_min || "-", gbUrl: gb.url, gbMaxUrl: gb.max_url || gb.url,
+              compMin, compMax, compAvg, compDetail: gr.min_detail || "-", compMaxDetail: gr.max_detail || "-",
+              compUrl: gr.min_url, compMaxUrl: gr.max_url,
+              diffWon: gbAvg - compAvg, diffPct: gr.diff_pct || 0
+            });
+          } else {
+            emeraldOpps.push({
+              cattle: gr.cattle, grade: gr.grade, keeping: gr.keeping, part: gr.part,
+              gbMin, gbMax, gbAvg, gbDate: gb.b_min || "-", gbUrl: gb.url, gbMaxUrl: gb.max_url || gb.url,
+              compMin, compMax, compAvg, compDetail: gr.min_detail || "-", compUrl: gr.min_url, compMaxUrl: gr.max_url,
+              leadWon: compAvg - gbAvg, diffPct: gr.diff_pct || 0
+            });
+          }
+        }
+
+        // [요청사항 반영] 품절/주의품목: 냉장 재고 5개 미만 / 냉동 재고 10개 미만
+        const lowLimit = getLowStockThreshold(gr.keeping);
+        const lowPlats = [];
+        PLATFORMS.forEach(pKey => {
+          const po = gr.platforms?.[pKey];
+          if (po && po.avg && isLowStockQty(po.cnt || 1, gr.keeping)) {
+            lowPlats.push(`${pKey}(${po.cnt || 1}개)`);
+          }
+        });
+        if (lowPlats.length > 0) {
+          lowStockTotalCnt += 1;
+          amberWarnings.push({
+            type: `⚠️ 재고주의(${gr.keeping}<${lowLimit}개)`,
+            cattle: gr.cattle, grade: gr.grade, keeping: gr.keeping, part: gr.part,
+            guide: `[${gr.keeping} 기준 ${lowLimit}개 미만 주의] ${lowPlats.join(", ")} 소량재고/품절임박`,
+            minUrl: gb?.url || gr.min_url,
+            maxUrl: gb?.max_url || gr.max_url,
+            minPrice: gbMin || compMin,
+            maxPrice: gbMax || compMax
+          });
+        }
+        if (gr.aged_range && gr.aged_range !== "-" && gr.fresh_range && gr.fresh_range !== "-") {
+          dumpingTotalCnt += 1;
+          amberWarnings.push({
+            type: "⏳ 노후재고 덤핑착시",
+            cattle: gr.cattle, grade: gr.grade, keeping: gr.keeping, part: gr.part,
+            guide: `신선육(${gr.fresh_range.slice(0, 34)}) vs 장기(${gr.aged_range.slice(0, 34)})`,
+            minUrl: gr.min_url,
+            maxUrl: gr.max_url,
+            minPrice: compMin,
+            maxPrice: compMax
+          });
+        }
+      });
+
+      redAlerts.sort((a, b) => b.diffWon - a.diffWon);
+      emeraldOpps.sort((a, b) => b.leadWon - a.leadWon);
+
+      const trackedCnt = STATE.trackedKeys.size;
+      document.getElementById("kpiRedAlertCnt").textContent = fmtNum(redAlerts.length);
+      document.getElementById("kpiAmberCnt").textContent = fmtNum(amberWarnings.length);
+      const lowEl = document.getElementById("kpiLowStockCnt");
+      if (lowEl) lowEl.textContent = fmtNum(lowStockTotalCnt);
+      document.getElementById("kpiDumpingCnt").textContent = fmtNum(dumpingTotalCnt);
+      document.getElementById("kpiEmeraldCnt").textContent = fmtNum(emeraldOpps.length);
+      document.getElementById("kpiTrackedCnt").textContent = fmtNum(trackedCnt);
+      document.getElementById("topTrackedCount").textContent = fmtNum(trackedCnt);
+      document.getElementById("sidebarTrackedBadge").textContent = fmtNum(trackedCnt);
+      document.getElementById("drawerTrackedBadge").textContent = fmtNum(trackedCnt);
+      document.getElementById("bottomTrackedBadge").textContent = fmtNum(trackedCnt);
+      document.getElementById("trackedPanelBadge").textContent = `${fmtNum(trackedCnt)}건`;
+
+      document.getElementById("badgeRedCnt").textContent = `${redAlerts.length}건`;
+      document.getElementById("badgeAmberCnt").textContent = `${amberWarnings.length}건`;
+      document.getElementById("badgeEmeraldCnt").textContent = `${emeraldOpps.length}건`;
+
+      document.getElementById("redAlertList").innerHTML = redAlerts.length === 0
+        ? `<div class="p-4 text-xs text-slate-500 bg-white rounded-lg border border-slate-200">선택된 필터(${effBriefKeep === "ALL" ? "전체" : effBriefKeep}) 조건에서 근본한우 가격 역전 품목이 없습니다.</div>`
+        : redAlerts.slice(0, 25).map(a => `
+          <div class="bg-white rounded-xl p-3 border border-red-200 shadow-2xs space-y-1.5">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-center gap-1 flex-wrap">
+                ${cattleBadge(a.cattle)} ${gradeBadge(a.grade)} ${keepingBadge(a.keeping)}
+                <span class="text-xs font-extrabold text-slate-900">${escapeHtml(a.part)}</span>
+              </div>
+              <span class="px-2 py-0.5 rounded bg-red-600 text-white text-[11px] font-extrabold num-tab">+${fmtNum(a.diffWon)}원 열위</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-[11px] bg-slate-50 p-2 rounded-lg">
+              <div>
+                <span class="text-slate-500 block">👑 근본한우 최저 / 최고</span>
+                <div class="num-tab">최저 ${fmtLink(a.gbUrl, fmtNum(a.gbMin) + "원", "text-slate-900 font-extrabold hover:underline")}</div>
+                <div class="num-tab text-[10px] text-slate-600">최고 ${fmtLink(a.gbMaxUrl, fmtNum(a.gbMax) + "원", "text-slate-700 font-bold hover:underline")}</div>
+              </div>
+              <div>
+                <span class="text-red-700 font-bold block">🔥 타사 최저 / 최고</span>
+                <div class="num-tab">최저 ${fmtLink(a.compUrl, fmtNum(a.compMin) + "원", "text-red-600 font-extrabold hover:underline")}</div>
+                <div class="num-tab text-[10px] text-slate-600">최고 ${fmtLink(a.compMaxUrl, fmtNum(a.compMax) + "원", "text-slate-700 font-bold hover:underline")}</div>
+              </div>
+            </div>
+            <div class="flex items-center justify-end gap-1.5 pt-0.5">
+              ${a.gbUrl ? `<a href="${escapeHtml(expandUrl(a.gbUrl))}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold">근본 최저가 ↗</a>` : ""}
+              ${a.compUrl ? `<a href="${escapeHtml(expandUrl(a.compUrl))}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold">타사 최저가 ↗</a>` : ""}
+              ${a.compMaxUrl ? `<a href="${escapeHtml(expandUrl(a.compMaxUrl))}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-bold">타사 최고가 ↗</a>` : ""}
+            </div>
+          </div>
+        `).join("");
+
+      document.getElementById("amberWarningList").innerHTML = amberWarnings.length === 0
+        ? `<div class="p-4 text-xs text-slate-500 bg-white rounded-lg border border-slate-200">선택 조건에서 재고주의(냉장&lt;5/냉동&lt;10) 및 노후재고 착시 품목이 없습니다.</div>`
+        : amberWarnings.slice(0, 25).map(a => `
+          <div class="bg-white rounded-xl p-3 border border-amber-200 shadow-2xs space-y-1.5">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-center gap-1 flex-wrap">
+                ${cattleBadge(a.cattle)} ${gradeBadge(a.grade)} ${keepingBadge(a.keeping)}
+                <span class="text-xs font-extrabold text-slate-900">${escapeHtml(a.part)}</span>
+              </div>
+              <span class="px-2 py-0.5 rounded bg-amber-500 text-white text-[10px] font-extrabold">${escapeHtml(a.type)}</span>
+            </div>
+            <p class="text-[11px] text-slate-700 leading-snug">${escapeHtml(a.guide)}</p>
+            <div class="flex items-center justify-between pt-1 text-[11px]">
+              <div class="space-x-1.5">
+                <span>최저: ${fmtLink(a.minUrl, fmtNum(a.minPrice) + "원", "text-emerald-700 font-extrabold hover:underline")}</span>
+                <span>최고: ${fmtLink(a.maxUrl, fmtNum(a.maxPrice) + "원", "text-amber-800 font-extrabold hover:underline")}</span>
+              </div>
+            </div>
+          </div>
+        `).join("");
+
+      document.getElementById("emeraldOppList").innerHTML = emeraldOpps.length === 0
+        ? `<div class="p-4 text-xs text-slate-500 bg-white rounded-lg border border-slate-200">선택 조건에 해당하는 근본한우 가격우위 품목이 없습니다.</div>`
+        : emeraldOpps.slice(0, 25).map(a => `
+          <div class="bg-white rounded-xl p-3 border border-emerald-200 shadow-2xs space-y-1.5">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-center gap-1 flex-wrap">
+                ${cattleBadge(a.cattle)} ${gradeBadge(a.grade)} ${keepingBadge(a.keeping)}
+                <span class="text-xs font-extrabold text-slate-900">${escapeHtml(a.part)}</span>
+              </div>
+              <span class="px-2 py-0.5 rounded bg-emerald-600 text-white text-[11px] font-extrabold num-tab">-${fmtNum(a.leadWon)}원 우위 (+${a.diffPct.toFixed(1)}%)</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-[11px] bg-emerald-50/60 p-2 rounded-lg">
+              <div>
+                <span class="text-emerald-800 font-bold block">👑 근본한우 최저 / 최고</span>
+                <div class="num-tab">최저 ${fmtLink(a.gbUrl, fmtNum(a.gbMin) + "원", "text-emerald-700 font-extrabold hover:underline")}</div>
+                <div class="num-tab text-[10px] text-slate-600">최고 ${fmtLink(a.gbMaxUrl, fmtNum(a.gbMax) + "원", "text-slate-700 font-bold hover:underline")}</div>
+              </div>
+              <div>
+                <span class="text-slate-500 block">타사 최저 / 최고</span>
+                <div class="num-tab">최저 ${fmtLink(a.compUrl, fmtNum(a.compMin) + "원", "text-slate-800 font-bold hover:underline")}</div>
+                <div class="num-tab text-[10px] text-slate-600">최고 ${fmtLink(a.compMaxUrl, fmtNum(a.compMax) + "원", "text-slate-700 font-bold hover:underline")}</div>
+              </div>
+            </div>
+          </div>
+        `).join("");
+
+      // 3) [요청사항 반영] 비교군 수집·재고·최저가 우위 현황 (냉장/냉동 구분필터 STATE.scoreboardKeeping 적용 시 데이터/도넛차트 즉시 변동!)
+      const effSbKeep = STATE.scoreboardKeeping !== "ALL" ? STATE.scoreboardKeeping : STATE.keeping;
+      const sbGrades = snap.grade_rows.filter(g => matchesGlobal5Filters(g, false, effSbKeep));
+
+      const platStats = {};
+      PLAT_META.forEach(pm => {
+        platStats[pm.key] = { condCnt: 0, stockCnt: 0, sumWeighted: 0, winCnt: 0, lowStockCnt: 0, label: pm.label };
+      });
+      sbGrades.forEach(gr => {
+        let bestP = null;
+        let bestMin = Infinity;
+        PLAT_META.forEach(pm => {
+          const po = gr.platforms?.[pm.key];
+          if (po && po.avg) {
+            const c = po.cnt || 1;
+            platStats[pm.key].condCnt += 1;
+            platStats[pm.key].stockCnt += c;
+            platStats[pm.key].sumWeighted += po.avg * c;
+            if (isLowStockQty(c, gr.keeping)) platStats[pm.key].lowStockCnt += 1;
+            const mn = po.min || po.avg;
+            if (mn < bestMin) {
+              bestMin = mn;
+              bestP = pm.key;
+            }
+          }
+        });
+        if (bestP) platStats[bestP].winCnt += 1;
+      });
+
+      const sbSubEl = document.getElementById("scoreboardSubDesc");
+      if (sbSubEl) {
+        sbSubEl.textContent = `[${effSbKeep === "ALL" ? "전체(냉장+냉동)" : effSbKeep}] 기준 총 ${fmtNum(sbGrades.length)}개 품목×등급 조건 집계 (재고주의: 냉장<5·냉동<10)`;
+      }
+
+      document.getElementById("platformScoreboardList").innerHTML = PLAT_META.map(pm => {
+        const st = platStats[pm.key];
+        const avgP = st.stockCnt > 0 ? Math.round(st.sumWeighted / st.stockCnt) : 0;
+        const isGb = pm.key === "근본한우";
+        return `
+          <div class="p-2.5 rounded-xl border ${isGb ? "border-red-300 bg-red-50/40" : "border-slate-200 bg-slate-50/70"} flex items-center justify-between">
+            <div>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-xs font-extrabold ${isGb ? "text-red-700" : "text-slate-900"}">${escapeHtml(pm.label)}</span>
+                <span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-white border border-slate-200 text-slate-700 num-tab">${fmtNum(st.condCnt)}조건 (${fmtNum(st.stockCnt)}건)</span>
+                ${st.lowStockCnt > 0 ? `<span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-amber-100 text-amber-800">⚠️주의 ${st.lowStockCnt}</span>` : ""}
+              </div>
+              <p class="text-[11px] text-slate-500 mt-0.5 num-tab">
+                원물평균: <strong class="text-slate-800">${avgP ? fmtNum(avgP) + "원/kg" : "-"}</strong>
+              </p>
+            </div>
+            <div class="text-right shrink-0">
+              <span class="text-[10px] font-bold text-slate-400 block">최저가 1위</span>
+              <span class="text-sm font-extrabold ${st.winCnt > 0 ? "text-blue-600" : "text-slate-400"} num-tab">${fmtNum(st.winCnt)}개 품목</span>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      renderMainBarChart(filteredItems, filteredGrades);
+      renderStockDoughnutChart(platStats);
+      renderEkapeSection();
+    }
+
+    function renderMainBarChart(filteredItems, filteredGrades) {
+      const ctx = document.getElementById("mainPriceComparisonChart");
+      if (!ctx || typeof Chart === "undefined") return;
+
+      const useGradeRows = STATE.grade !== "ALL" || STATE.part !== "ALL";
+      const sourceRows = (useGradeRows ? filteredGrades : filteredItems).slice(0, 22);
+      const labels = sourceRows.map(r => {
+        const cShort = r.cattle === "한우암소" ? "[암]" : "[거]";
+        const gShort = r.grade ? `(${r.grade})` : "";
+        return `${cShort}${r.part}${gShort}`;
+      });
+
+      const datasets = PLAT_META.map(pm => ({
+        label: pm.short,
+        data: sourceRows.map(r => {
+          const po = r.platforms?.[pm.key];
+          return po && (po.min || po.avg) ? (po.min || po.avg) : null;
+        }),
+        backgroundColor: pm.color,
+        borderRadius: 3,
+        maxBarThickness: 18
+      }));
+
+      if (STATE.charts.mainBar) STATE.charts.mainBar.destroy();
+      STATE.charts.mainBar = new Chart(ctx, {
+        type: "bar",
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { position: "top", labels: { font: { family: "Pretendard", size: 11, weight: "bold" }, boxWidth: 12 } },
+            tooltip: {
+              callbacks: {
+                label: (c) => `${c.dataset.label}: ${c.raw ? fmtNum(c.raw) + "원/kg" : "미취급"}`
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { font: { family: "Pretendard", size: 10, weight: "bold" }, autoSkip: false, maxRotation: 40 } },
+            y: { beginAtZero: true, ticks: { callback: v => fmtNum(v) + "원" } }
+          }
+        }
+      });
+    }
+
+    function renderStockDoughnutChart(platStats) {
+      const ctx = document.getElementById("stockDistributionChart");
+      if (!ctx || typeof Chart === "undefined") return;
+      const labels = PLAT_META.map(pm => pm.short);
+      const dataVals = PLAT_META.map(pm => platStats[pm.key]?.stockCnt || 0);
+      const colors = PLAT_META.map(pm => pm.color);
+
+      if (STATE.charts.stockDoughnut) STATE.charts.stockDoughnut.destroy();
+      STATE.charts.stockDoughnut = new Chart(ctx, {
+        type: "doughnut",
+        data: { labels, datasets: [{ data: dataVals, backgroundColor: colors, borderWidth: 1 }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "right", labels: { font: { family: "Pretendard", size: 11 }, boxWidth: 10 } }
+          }
+        }
+      });
+    }
+
+    function renderEkapeSection() {
+      const snap = ARCHIVE.snapshots[STATE.currentSnapIdx];
+      const ekCattle = document.getElementById("ekapeCattleFilter")?.value || "ALL";
+      const ekGrade = document.getElementById("ekapeGradeFilter")?.value || "전국평균";
+      const rows = snap.ekape_rows || [];
+
+      const tbody = document.getElementById("tbodyEkape");
+      if (tbody) {
+        tbody.innerHTML = rows
+          .filter(r => ekCattle === "ALL" || r.cattle === ekCattle)
+          .map(r => `
+            <tr class="${r.grade === "전국평균" ? "bg-red-50/50 font-extrabold" : "hover:bg-slate-50"}">
+              <td class="py-2 px-3">${cattleBadge(r.cattle)}</td>
+              <td class="py-2 px-3 font-bold">${escapeHtml(r.grade)}</td>
+              <td class="py-2 px-3 text-right font-extrabold text-red-600 num-tab">${fmtNum(r.price)}원</td>
+              <td class="py-2 px-3 text-right num-tab">${fmtNum(r.cnt)}두</td>
+              <td class="py-2 px-3 text-right num-tab">${fmtNum(r.prev_day_price)}원 (${(r.prev_day_pct || 0) >= 0 ? "+" : ""}${(r.prev_day_pct || 0).toFixed(2)}%)</td>
+              <td class="py-2 px-3 text-right num-tab">${fmtNum(r.prev_week_price)}원 (${(r.prev_week_pct || 0) >= 0 ? "+" : ""}${(r.prev_week_pct || 0).toFixed(2)}%)</td>
+              <td class="py-2 px-3 text-right num-tab">${fmtNum(r.prev_month_price)}원 (${(r.prev_month_pct || 0) >= 0 ? "+" : ""}${(r.prev_month_pct || 0).toFixed(2)}%)</td>
+              <td class="py-2 px-3 text-right num-tab">${fmtNum(r.yoy_price)}원 (${(r.yoy_pct || 0) >= 0 ? "+" : ""}${(r.yoy_pct || 0).toFixed(2)}%)</td>
+            </tr>
+          `).join("");
+      }
+
+      if (typeof Chart === "undefined") return;
+      const gOrder = ["전국평균", "1++(9)", "1++(8)", "1++(7)", "1+", "1", "2", "3"];
+      const geoseMap = {};
+      const amsoMap = {};
+      rows.forEach(r => {
+        if (r.cattle === "한우거세") geoseMap[r.grade] = r;
+        if (r.cattle === "한우암소") amsoMap[r.grade] = r;
+      });
+
+      const ctx1 = document.getElementById("ekapeGradeBarChart");
+      if (ctx1) {
+        if (STATE.charts.ekapeGradeBar) STATE.charts.ekapeGradeBar.destroy();
+        const ds1 = [];
+        if (ekCattle !== "한우암소") {
+          ds1.push({ label: "🐂 한우거세 (원/kg)", data: gOrder.map(g => geoseMap[g]?.price || null), backgroundColor: "#DC2626", borderRadius: 4 });
+        }
+        if (ekCattle !== "한우거세") {
+          ds1.push({ label: "🐄 한우암소 (원/kg)", data: gOrder.map(g => amsoMap[g]?.price || null), backgroundColor: "#2563EB", borderRadius: 4 });
+        }
+        STATE.charts.ekapeGradeBar = new Chart(ctx1, {
+          type: "bar",
+          data: { labels: gOrder, datasets: ds1 },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: "top" } },
+            scales: { y: { ticks: { callback: v => fmtNum(v) + "원" } } }
+          }
+        });
+      }
+
+      const ctx2 = document.getElementById("ekapeTimelineChart");
+      if (ctx2) {
+        if (STATE.charts.ekapeTimeline) STATE.charts.ekapeTimeline.destroy();
+        const stages = [
+          { k: "yoy_price", lbl: "전년동기" },
+          { k: "prev_month_price", lbl: "전월동기" },
+          { k: "prev_week_price", lbl: "전주동요일" },
+          { k: "prev_day_price", lbl: "전일" },
+          { k: "price", lbl: `기준일(${snap.ekape_base_date})` }
+        ];
+        const gRow = geoseMap[ekGrade] || geoseMap["전국평균"];
+        const aRow = amsoMap[ekGrade] || amsoMap["전국평균"];
+        const ds2 = [];
+        if (ekCattle !== "한우암소" && gRow) {
+          ds2.push({
+            label: `🐂 한우거세 (${ekGrade})`,
+            data: stages.map(s => gRow[s.k] || null),
+            borderColor: "#DC2626", backgroundColor: "#DC2626", borderWidth: 2.5, tension: 0.25
+          });
+        }
+        if (ekCattle !== "한우거세" && aRow) {
+          ds2.push({
+            label: `🐄 한우암소 (${ekGrade})`,
+            data: stages.map(s => aRow[s.k] || null),
+            borderColor: "#2563EB", backgroundColor: "#2563EB", borderWidth: 2.5, tension: 0.25
+          });
+        }
+        STATE.charts.ekapeTimeline = new Chart(ctx2, {
+          type: "line",
+          data: { labels: stages.map(s => s.lbl), datasets: ds2 },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: "top" } },
+            scales: { y: { ticks: { callback: v => fmtNum(v) + "원" } } }
+          }
+        });
+      }
+    }
+
+    // ===================== VIEW 2: 6대 플랫폼 품목 매핑 & 근본한우(메인) 비교 매트릭스 =====================
+    function renderComparisonMatrix() {
+      const snap = ARCHIVE.snapshots[STATE.currentSnapIdx];
+      const mode = document.getElementById("matrixModeFilter")?.value || "GRADE";
+      const sigFlt = document.getElementById("matrixSignalFilter")?.value || "ALL";
+      const isItemMode = mode === "ITEM";
+
+      const srcList = isItemMode ? snap.full_items : snap.grade_rows;
+      const rows = srcList.filter(r => {
+        if (!matchesGlobal5Filters(r, isItemMode)) return false;
+        const gbObj = r.platforms?.["근본한우"];
+        const gbAvg = gbObj?.avg;
+        const dp = r.diff_pct;
+        if (sigFlt === "GB_ONLY" && !gbAvg) return false;
+        if (sigFlt === "danger" && !(gbAvg && dp !== undefined && dp < 0)) return false;
+        if (sigFlt === "safe" && !(gbAvg && dp !== undefined && dp >= 0)) return false;
+        if (sigFlt === "lowstock") {
+          const hasLow = PLATFORMS.some(pk => {
+            const po = r.platforms?.[pk];
+            return po && po.avg && isLowStockQty(po.cnt || 1, r.keeping);
+          });
+          if (!hasLow) return false;
+        }
+        return true;
+      });
+
+      const sumEl = document.getElementById("matrixCountSummary");
+      if (sumEl) sumEl.textContent = `조회: ${fmtNum(rows.length)}건`;
+
+      function renderPlatformCell(r, pKey, overallMin, overallMax, gbBasePrice) {
+        const po = r.platforms?.[pKey];
+        const isGbCol = pKey === "근본한우";
+        if (!po || !po.avg) {
+          return `<td class="py-3 px-3 text-slate-400 text-center ${isGbCol ? "bg-red-50/20 border-x border-red-100" : ""}">미취급/품절</td>`;
+        }
+        const mn = po.min || po.avg;
+        const mx = po.max || po.avg;
+        const av = po.avg;
+        const cnt = po.cnt || 1;
+        const minUrl = po.url || r.min_url;
+        const maxUrl = po.max_url || po.url || r.max_url;
+        const isWinner = overallMin && mn <= overallMin;
+        const isLow = isLowStockQty(cnt, r.keeping);
+        const lowLimit = getLowStockThreshold(r.keeping);
+
+        const cellBg = isGbCol
+          ? "bg-red-50/40 border-x border-red-200"
+          : (isWinner ? "bg-emerald-50/90" : "");
+
+        // 근본한우 대비 단가 편차 뱃지 (근본한우가 입점된 행은 근본한우 대비, 미입점 행은 시장최저가 대비)
+        let deltaBadge = "";
+        if (isGbCol) {
+          deltaBadge = `<span class="px-1.5 py-0.2 text-[10px] rounded bg-red-600 text-white font-extrabold">👑메인기준</span>`;
+        } else if (gbBasePrice) {
+          const vsGb = mn - gbBasePrice;
+          if (vsGb === 0) {
+            deltaBadge = `<span class="px-1.5 py-0.2 text-[10px] rounded bg-slate-200 text-slate-700 font-bold">근본동일</span>`;
+          } else if (vsGb > 0) {
+            deltaBadge = `<span class="px-1.5 py-0.2 text-[10px] rounded bg-emerald-100 text-emerald-800 font-extrabold num-tab">근본대비 +${fmtNum(vsGb)}원</span>`;
+          } else {
+            deltaBadge = `<span class="px-1.5 py-0.2 text-[10px] rounded bg-red-100 text-red-700 font-extrabold num-tab">근본대비 ${fmtNum(vsGb)}원</span>`;
+          }
+        } else if (isWinner) {
+          deltaBadge = `<span class="px-1.5 py-0.2 text-[10px] rounded bg-emerald-600 text-white font-bold">최저1위</span>`;
+        } else if (overallMin) {
+          deltaBadge = `<span class="px-1.5 py-0.2 text-[10px] rounded bg-slate-100 text-slate-600 font-semibold num-tab">+${fmtNum(mn - overallMin)}원</span>`;
+        }
+
+        const spanRange = Math.max(1, (overallMax || mx) - (overallMin || mn));
+        const pct = Math.min(100, Math.max(14, Math.round(((mn - (overallMin || mn)) / spanRange) * 84) + 14));
+        const barColor = isGbCol ? "#DC2626" : (isWinner ? "#059669" : "#3B82F6");
+
+        return `
+          <td class="py-2.5 px-3 align-top ${cellBg}">
+            <div class="flex items-center justify-between gap-1">
+              <div>
+                <span class="text-[10px] text-slate-400">최저</span>
+                ${fmtLink(minUrl, fmtNum(mn) + "원", `font-extrabold text-[13px] num-tab hover:underline ${isGbCol ? "text-red-700" : (isWinner ? "text-emerald-700" : "text-slate-900")}`)}
+              </div>
+              ${deltaBadge}
+            </div>
+            <div class="price-spectrum-track">
+              <div class="price-spectrum-fill" style="width:${pct}%; background-color:${barColor};"></div>
+            </div>
+            <div class="text-[11px] text-slate-600 num-tab mt-1 flex items-center justify-between gap-1">
+              <span>최고 ${fmtLink(maxUrl, fmtNum(mx) + "원", "font-bold text-amber-800 hover:underline")}</span>
+              <span class="font-bold ${isLow ? "text-red-600" : "text-slate-700"}">재고 ${fmtNum(cnt)}건${isLow ? ` ⚠️(<${lowLimit})` : ""}</span>
+            </div>
+            <div class="text-[10px] text-slate-500 mt-0.5 truncate max-w-[165px]">
+              평균 ${fmtNum(av)}원 · ${po.b_min && po.b_min !== "-" ? fmtLink(minUrl, po.b_min, "text-slate-600 hover:underline") : "-"}
+            </div>
+          </td>
+        `;
+      }
+
+      const tbodyHtml = rows.slice(0, 260).map(r => {
+        let overallMin = r.comp_min || r.comp_avg || null;
+        let overallMax = r.comp_max || r.comp_avg || null;
+        const gbObj = r.platforms?.["근본한우"];
+        const gbBasePrice = gbObj?.min || gbObj?.avg || null;
+        if (gbObj?.min && (!overallMin || gbObj.min < overallMin)) overallMin = gbObj.min;
+        if (gbObj?.max && (!overallMax || gbObj.max > overallMax)) overallMax = gbObj.max;
+
+        const dp = r.diff_pct;
+        let sigBadge = `<span class="px-2 py-1 rounded-md bg-slate-100 text-slate-500 font-bold text-[11px]">미입점</span>`;
+        if (gbObj?.avg && dp !== null && dp !== undefined) {
+          if (dp >= 0) {
+            sigBadge = `<span class="px-2 py-1 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold text-[11px]">✅ +${dp.toFixed(1)}% 우위</span>`;
+          } else {
+            sigBadge = `<span class="px-2 py-1 rounded-md bg-red-100 text-red-700 border border-red-300 font-extrabold text-[11px]">🚨 ${dp.toFixed(1)}% 열위</span>`;
+          }
+        }
+        const targetUrl = expandUrl(gbObj?.url || r.min_url);
+        const isAmso = r.cattle === "한우암소";
+
+        return `
+          <tr class="hover:bg-slate-50/90 transition ${isAmso ? "bg-pink-50/10" : ""}">
+            <td class="py-3 px-3 font-extrabold text-slate-900 ${isAmso ? "border-l-4 border-l-pink-500" : "border-l-4 border-l-indigo-500"}">
+              <div class="flex items-center gap-1 flex-wrap">
+                ${cattleBadge(r.cattle)}
+                ${isItemMode ? `<span class="text-[10px] text-amber-800 font-bold">[${escapeHtml(r.grades || "전등급")}]</span>` : gradeBadge(r.grade)}
+                ${keepingBadge(r.keeping)}
+              </div>
+              <div class="mt-1 text-[13px] text-slate-900 flex items-center gap-1.5">
+                <span class="text-[11px] font-semibold text-slate-400">[${escapeHtml(r.major)}]</span>
+                <span>${escapeHtml(r.part)}</span>
+              </div>
+            </td>
+            <!-- 👑 근본한우 메인 기준 컬럼을 가장 앞에 배치 -->
+            ${renderPlatformCell(r, "근본한우", overallMin, overallMax, gbBasePrice)}
+            <td class="py-3 px-3 bg-slate-50/80">
+              <div class="text-[11px] font-extrabold text-blue-700 num-tab">
+                최저: ${overallMin ? fmtLink(r.min_url, fmtNum(overallMin) + "원/kg", "text-blue-700 font-extrabold hover:underline") : "-"}
+              </div>
+              <div class="text-[10px] text-slate-600 mt-0.5 max-w-[180px] truncate">
+                ${r.min_detail ? fmtLink(r.min_url, r.min_detail, "text-slate-600 hover:underline") : "-"}
+              </div>
+              <div class="text-[11px] font-bold text-amber-800 mt-1 num-tab">
+                최고: ${overallMax ? fmtLink(r.max_url, fmtNum(overallMax) + "원/kg", "text-amber-800 font-extrabold hover:underline") : "-"}
+              </div>
+              <div class="text-[10px] text-slate-500 max-w-[180px] truncate">
+                ${r.max_detail ? fmtLink(r.max_url, r.max_detail, "text-slate-500 hover:underline") : "-"}
+              </div>
+            </td>
+            ${COMP_PLATFORMS.map(pk => renderPlatformCell(r, pk, overallMin, overallMax, gbBasePrice)).join("")}
+            <td class="py-3 px-3 text-center space-y-1.5">
+              <div>${sigBadge}</div>
+              <div class="flex flex-col gap-1 items-center">
+                ${r.min_url ? `<a href="${escapeHtml(expandUrl(r.min_url))}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-emerald-700 hover:bg-emerald-600 text-white text-[10px] font-bold">최저가 상품 ↗</a>` : ""}
+                ${r.max_url ? `<a href="${escapeHtml(expandUrl(r.max_url))}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-navy-900 hover:bg-slate-700 text-white text-[10px] font-bold">최고가 상품 ↗</a>` : ""}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      const dtBody = document.getElementById("matrixDesktopBody");
+      if (dtBody) dtBody.innerHTML = tbodyHtml;
+    }
+
+    // ===================== VIEW 3: 생산일자별 최저·최고가 분석 (👑근본한우 메인 대비 타플랫폼 데이터 구성) =====================
+    function renderView3ProductionDate() {
+      const snap = ARCHIVE.snapshots[STATE.currentSnapIdx];
+      const filteredCohorts = (snap.cohorts || []).filter(c => matchesGlobal5Filters(c, false));
+      const filteredGrades = snap.grade_rows.filter(g => matchesGlobal5Filters(g, false));
+      const mode = document.getElementById("prodDateFilterMode")?.value || "ALL";
+
+      // 1) 상단 4열 생산경과일 구간 요약 카드 (부위 탭 클릭 시 즉시 반응!)
+      const bucketDefs = [
+        { key: "FRESH", label: "🌱 당월 신선육 (0~14일)", match: c => (c.elapsed || 0) <= 14, border: "border-emerald-300" },
+        { key: "NORM", label: "📦 숙성적기 (15~30일)", match: c => (c.elapsed || 0) >= 15 && (c.elapsed || 0) <= 30, border: "border-blue-300" },
+        { key: "AGED", label: "⏳ 장기재고 (31~45일)", match: c => (c.elapsed || 0) >= 31 && (c.elapsed || 0) <= 45, border: "border-amber-400" },
+        { key: "OLD", label: "❄️ 초장기/냉동 (45일+)", match: c => (c.elapsed || 0) > 45, border: "border-slate-300" }
+      ];
+
+      document.getElementById("prodBucketSummaryCards").innerHTML = bucketDefs.map(bd => {
+        const sub = filteredCohorts.filter(bd.match);
+        const mins = sub.filter(x => x.min).sort((a, b) => a.min - b.min);
+        const maxs = sub.filter(x => x.max).sort((a, b) => b.max - a.max);
+        const avgs = sub.map(x => x.avg).filter(Boolean);
+        const stk = sub.reduce((a, x) => a + (x.qty || 1), 0);
+        const bestMinObj = mins[0] || null;
+        const bestMaxObj = maxs[0] || null;
+        const avgV = avgs.length ? Math.round(avgs.reduce((a, b) => a + b, 0) / avgs.length) : null;
+        return `
+          <div class="bg-white rounded-2xl p-4 border ${bd.border} shadow-xs">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-extrabold text-slate-800">${bd.label}</span>
+              <span class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-slate-100 text-slate-700 num-tab">${fmtNum(sub.length)}개 코호트</span>
+            </div>
+            <div class="my-2 flex items-baseline justify-between">
+              <div>
+                <span class="text-[11px] text-slate-500 block">구간 최저가 (🔗)</span>
+                <strong class="text-lg font-extrabold text-blue-700 num-tab">${bestMinObj ? fmtLink(bestMinObj.min_url, fmtNum(bestMinObj.min) + "원", "text-blue-700 font-extrabold hover:underline") : "-"}</strong>
+              </div>
+              <div class="text-right">
+                <span class="text-[11px] text-slate-500 block">구간 최고가 (🔗)</span>
+                <strong class="text-lg font-extrabold text-slate-900 num-tab">${bestMaxObj ? fmtLink(bestMaxObj.max_url || bestMaxObj.min_url, fmtNum(bestMaxObj.max) + "원", "text-slate-900 font-extrabold hover:underline") : "-"}</strong>
+              </div>
+            </div>
+            <div class="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex justify-between num-tab">
+              <span>평균단가: <strong>${avgV ? fmtNum(avgV) + "원/kg" : "-"}</strong></span>
+              <span>재고옵션: <strong>${fmtNum(stk)}건</strong></span>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      // 2) 노후 재고 덤핑 착시 감지 리포트
+      const dumpingRows = filteredGrades.filter(gr => gr.aged_range && gr.aged_range !== "-" && gr.fresh_range && gr.fresh_range !== "-");
+      document.getElementById("dumpingAlertBadge").textContent = `${dumpingRows.length}건`;
+      document.getElementById("dumpingAlertCards").innerHTML = dumpingRows.length === 0
+        ? `<div class="p-4 text-xs text-slate-500 bg-slate-50 rounded-xl">선택 필터 조건에서 장기재고 착시 품목이 없습니다.</div>`
+        : dumpingRows.slice(0, 20).map(gr => `
+          <div class="p-3 rounded-xl bg-amber-50/70 border border-amber-300 space-y-1.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1 flex-wrap">
+                ${cattleBadge(gr.cattle)} ${gradeBadge(gr.grade)} ${keepingBadge(gr.keeping)}
+                <strong class="text-xs font-extrabold text-slate-900">${escapeHtml(gr.part)}</strong>
+              </div>
+              <span class="px-2 py-0.5 rounded bg-amber-600 text-white text-[11px] font-extrabold num-tab">편차 +${fmtNum((gr.comp_max || 0) - (gr.comp_min || 0))}원</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-[11px] bg-white p-2 rounded-lg border border-amber-200">
+              <div>
+                <span class="text-emerald-800 font-bold block">🌱 당월 신선육(≤14일)</span>
+                <span class="text-[10px] text-slate-700 leading-snug block">${fmtLink(gr.min_url, gr.fresh_range, "text-slate-700 hover:underline")}</span>
+              </div>
+              <div>
+                <span class="text-amber-800 font-bold block">⏳ 숙성/장기(≥15일)</span>
+                <span class="text-[10px] text-slate-700 leading-snug block">${fmtLink(gr.max_url, gr.aged_range, "text-slate-700 hover:underline")}</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-between pt-0.5 text-[11px]">
+              <span class="text-amber-900 font-medium truncate max-w-[210px]">최저: ${fmtLink(gr.min_url, gr.min_detail || "-", "text-amber-900 hover:underline")}</span>
+              <div class="flex gap-1 shrink-0">
+                ${gr.min_url ? `<a href="${escapeHtml(expandUrl(gr.min_url))}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-emerald-700 text-white text-[10px] font-bold">최저가 ↗</a>` : ""}
+                ${gr.max_url ? `<a href="${escapeHtml(expandUrl(gr.max_url))}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-amber-700 text-white text-[10px] font-bold">최고가 ↗</a>` : ""}
+              </div>
+            </div>
+          </div>
+        `).join("");
+
+      // 3) 생산일자 구간 차트 (👑근본한우 메인 대비 타사 최저/평균/최고가)
+      const ctx = document.getElementById("prodDateSpreadChart");
+      if (ctx && typeof Chart !== "undefined") {
+        const sortedChartRows = [...filteredGrades].sort((a, b) => (a.platforms?.["근본한우"]?.avg ? 0 : 1) - (b.platforms?.["근본한우"]?.avg ? 0 : 1)).slice(0, 16);
+        const labels = sortedChartRows.map(r => `${r.cattle === "한우암소" ? "[암]" : "[거]"}${r.part}(${r.grade})`);
+        const gbData = sortedChartRows.map(r => r.platforms?.["근본한우"]?.min || r.platforms?.["근본한우"]?.avg || null);
+        const minData = sortedChartRows.map(r => r.comp_min || null);
+        const avgData = sortedChartRows.map(r => r.comp_avg || null);
+        const maxData = sortedChartRows.map(r => r.comp_max || null);
+
+        if (STATE.charts.prodDateSpread) STATE.charts.prodDateSpread.destroy();
+        STATE.charts.prodDateSpread = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [
+              { label: "👑 근본한우(메인 기준)", data: gbData, backgroundColor: "#DC2626", borderRadius: 4 },
+              { label: "📉 타사 최저가(Min)", data: minData, backgroundColor: "#10B981", borderRadius: 4 },
+              { label: "📊 타사 평균가(Avg)", data: avgData, backgroundColor: "#3B82F6", borderRadius: 4 },
+              { label: "📈 타사 최고가(Max)", data: maxData, backgroundColor: "#64748B", borderRadius: 4 }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            plugins: { legend: { position: "top" } },
+            scales: { y: { ticks: { callback: v => fmtNum(v) + "원" } } }
+          }
+        });
+      }
+
+      // 4) [요청사항 반영] 근본한우를 메인으로 대비 타플랫폼 상품 데이터 & 생산일자별 최저/최고가 매트릭스
+      let sortedForView3 = [...filteredGrades].sort((a, b) => {
+        const aGb = a.platforms?.["근본한우"]?.avg ? 0 : 1;
+        const bGb = b.platforms?.["근본한우"]?.avg ? 0 : 1;
+        return aGb - bGb;
+      });
+      if (mode === "GB_ONLY") {
+        sortedForView3 = sortedForView3.filter(r => r.platforms?.["근본한우"]?.avg);
+      }
+
+      document.getElementById("prodDateDesktopBody").innerHTML = sortedForView3.slice(0, 200).map(r => {
+        const gb = r.platforms?.["근본한우"];
+        const gbMin = gb?.min || gb?.avg || null;
+        const gbMax = gb?.max || gb?.avg || null;
+        const gbLow = gb?.avg && isLowStockQty(gb.cnt || 1, r.keeping);
+        const gbHtml = gb && gb.avg
+          ? `<div class="font-extrabold text-red-700 text-[13px] num-tab">
+               최저 ${fmtLink(gb.url || r.min_url, fmtNum(gbMin) + "원", "text-red-700 font-extrabold hover:underline")}
+             </div>
+             <div class="text-[11px] font-bold text-slate-700 num-tab mt-0.5">
+               최고 ${fmtLink(gb.max_url || gb.url || r.max_url, fmtNum(gbMax) + "원", "text-slate-800 font-bold hover:underline")}
+             </div>
+             <div class="text-[10px] text-slate-600 mt-0.5">
+               ${escapeHtml(gb.b_min || "-")} · 재고 ${fmtNum(gb.cnt || 1)}건 ${gbLow ? '<span class="text-red-600 font-bold">⚠️주의</span>' : ""}
+             </div>`
+          : `<span class="text-slate-400 font-semibold">미입점 (타사비교)</span>`;
+
+        // 타플랫폼 5곳(미트박스·금천·프렌즈·탑·본대로) 최저가🔗~최고가🔗 및 근본한우 대비 편차 요약
+        const compBadgesHtml = COMP_PLATFORMS.map(pk => {
+          const po = r.platforms?.[pk];
+          if (!po || !po.avg) return "";
+          const cMin = po.min || po.avg;
+          const cMax = po.max || po.avg;
+          const diffStr = gbMin ? ((cMin - gbMin) >= 0 ? `+${fmtNum(cMin - gbMin)}` : `${fmtNum(cMin - gbMin)}`) : "";
+          const diffCls = gbMin ? ((cMin - gbMin) >= 0 ? "text-emerald-700" : "text-red-600") : "text-slate-500";
+          return `<div class="flex items-center justify-between gap-2 text-[11px] border-b border-slate-100 py-0.5">
+            <span class="font-bold text-slate-700">${escapeHtml(pk)}</span>
+            <span class="num-tab">
+              ${fmtLink(po.url || r.min_url, fmtNum(cMin) + "원", "font-extrabold text-blue-700 hover:underline")}
+              ~ ${fmtLink(po.max_url || po.url || r.max_url, fmtNum(cMax) + "원", "font-bold text-amber-800 hover:underline")}
+              ${diffStr ? `<strong class="${diffCls} ml-1">(${diffStr})</strong>` : ""}
+            </span>
+          </div>`;
+        }).filter(Boolean).join("");
+
+        const dp = r.diff_pct;
+        const diagTxt = gb && gb.avg && dp !== null && dp !== undefined
+          ? (dp >= 0 ? `✅ 근본한우 +${dp.toFixed(1)}% 가격우위` : `🚨 근본한우 ${dp.toFixed(1)}% 단가열위`)
+          : `생산일 범위: ${r.dt_range || "-"}`;
+
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-3 font-extrabold">
+              <div class="flex items-center gap-1 flex-wrap">${cattleBadge(r.cattle)} ${gradeBadge(r.grade)} ${keepingBadge(r.keeping)}</div>
+              <div class="mt-1 text-slate-900">[${escapeHtml(r.major)}] ${escapeHtml(r.part)}</div>
+            </td>
+            <td class="py-2.5 px-3 bg-red-50/40 border-x border-red-200">${gbHtml}</td>
+            <td class="py-2.5 px-3 text-[11px] text-emerald-950 max-w-[210px]">
+              ${r.fresh_range && r.fresh_range !== "-" ? fmtLink(r.min_url, r.fresh_range, "text-emerald-900 font-semibold hover:underline") : "-"}
+            </td>
+            <td class="py-2.5 px-3 text-[11px] text-amber-950 max-w-[210px]">
+              ${r.aged_range && r.aged_range !== "-" ? fmtLink(r.max_url, r.aged_range, "text-amber-900 font-semibold hover:underline") : "-"}
+            </td>
+            <td class="py-2 px-3 min-w-[245px]">${compBadgesHtml || "-"}</td>
+            <td class="py-2.5 px-3 text-[11px] font-bold text-blue-700 max-w-[190px]">
+              ${fmtLink(r.min_url, r.min_detail || "-", "text-blue-700 font-extrabold hover:underline")}
+            </td>
+            <td class="py-2.5 px-3 text-[11px] font-bold text-amber-800 max-w-[190px]">
+              ${fmtLink(r.max_url, r.max_detail || "-", "text-amber-800 font-extrabold hover:underline")}
+            </td>
+            <td class="py-2.5 px-3">
+              <div class="text-[11px] font-bold ${dp !== null && dp < 0 ? "text-red-600" : "text-emerald-700"}">${escapeHtml(diagTxt)}</div>
+              <div class="flex gap-1 mt-1">
+                ${r.min_url ? `<a href="${escapeHtml(expandUrl(r.min_url))}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-emerald-700 text-white text-[10px] font-bold">최저가 ↗</a>` : ""}
+                ${r.max_url ? `<a href="${escapeHtml(expandUrl(r.max_url))}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-navy-900 text-white text-[10px] font-bold">최고가 ↗</a>` : ""}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    // ===================== VIEW 4: 전 상품 필터 & 중복 탭(최대 5개) 반응형 카테고리 차트 & 누적 체크 =====================
+    function getCohortKey(c) {
+      return `${c.cattle}|${c.grade}|${c.keeping}|${c.part}|${c.platform}|${c.brand}`;
+    }
+
+    function toggleTrackedItem(itemKey) {
+      if (STATE.trackedKeys.has(itemKey)) {
+        STATE.trackedKeys.delete(itemKey);
+        showToast("중점관리 체크가 해제되었습니다.", "🗑️");
+      } else {
+        STATE.trackedKeys.add(itemKey);
+        showToast("⭐ 중점관리 체크 상품으로 등록되었습니다.", "⭐");
+      }
+      localStorage.setItem("hanwoo_tracked_keys_v1", JSON.stringify(Array.from(STATE.trackedKeys)));
+      renderView1Dashboard();
+      renderTrackedPanel();
+      applyProductFilters();
+    }
+
+    function filterOnlyTracked() {
+      const el = document.getElementById("fltStatus");
+      if (el) el.value = "TRACKED";
+      applyProductFilters();
+    }
+
+    function renderTrackedPanel() {
+      const snap = ARCHIVE.snapshots[STATE.currentSnapIdx];
+      const allCohorts = snap.cohorts || [];
+      const trackedList = allCohorts.filter(c => STATE.trackedKeys.has(getCohortKey(c)));
+
+      const qListEl = document.getElementById("trackedQuickList");
+      if (qListEl) {
+        qListEl.innerHTML = trackedList.length === 0
+          ? `<div class="col-span-full p-3 text-xs text-slate-500 bg-slate-50 rounded-xl">체크된 중점관리 상품이 없습니다. 아래 표 좌측 체크박스(☑️)를 클릭해 추가하세요.</div>`
+          : trackedList.map(c => {
+            const k = getCohortKey(c);
+            const uMin = expandUrl(c.min_url);
+            const uMax = expandUrl(c.max_url || c.min_url);
+            return `
+              <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1 flex-wrap">
+                    ${cattleBadge(c.cattle)} ${gradeBadge(c.grade)} ${keepingBadge(c.keeping)}
+                    <span class="text-xs font-extrabold text-slate-900">${escapeHtml(c.part)}</span>
+                    ${brandBadge(c.brand, c.platform === "근본한우", uMin)}
+                  </div>
+                  <div class="text-[10px] text-slate-500 mt-0.5">
+                    [${escapeHtml(c.platform)}] 생산일: ${escapeHtml(c.dt_range || "-")} (${c.elapsed || 0}일) · 재고 ${fmtNum(c.qty)}건
+                  </div>
+                </div>
+                <div class="text-right shrink-0 space-y-0.5">
+                  <div class="text-[11px] font-extrabold text-emerald-700 num-tab">최저 ${fmtLink(uMin, fmtNum(c.min) + "원")}</div>
+                  <div class="text-[10px] font-bold text-amber-800 num-tab">최고 ${fmtLink(uMax, fmtNum(c.max) + "원")}</div>
+                  <button type="button" onclick="toggleTrackedItem('${escapeHtml(k)}')" class="px-2 py-0.5 rounded bg-slate-200 hover:bg-red-100 text-slate-700 hover:text-red-700 text-[10px] font-bold">해제</button>
+                </div>
+              </div>
+            `;
+          }).join("");
+      }
+
+      if (typeof Chart === "undefined") return;
+      const targetParts = STATE.multiParts.length > 0
+        ? STATE.multiParts.slice(0, 5)
+        : (STATE.part !== "ALL" ? [STATE.part] : ["등심", "안심", "채끝"]);
+
+      // [요청사항 반영] 아래 카테고리 차트 1 (#filteredCategoryChart): 선택된 최대 5개 중복 탭 부위의 6대 플랫폼 최저가/최고가 실시간 반응 차트
+      const ctxCat = document.getElementById("filteredCategoryChart");
+      if (ctxCat) {
+        if (STATE.charts.filteredCategory) STATE.charts.filteredCategory.destroy();
+        const catTitleEl = document.getElementById("filteredCategoryChartTitle");
+        if (catTitleEl) {
+          catTitleEl.textContent = `📊 [반응형 카테고리 차트 1] 선택 부위(${targetParts.join(" · ")}) 플랫폼별 최저가 비교`;
+        }
+        const catDatasets = PLAT_META.map(pm => ({
+          label: pm.short,
+          data: targetParts.map(pName => {
+            const matching = snap.grade_rows.filter(g => {
+              if (g.part !== pName) return false;
+              if (STATE.cattle !== "ALL" && g.cattle !== STATE.cattle) return false;
+              if (STATE.grade !== "ALL" && g.grade !== STATE.grade) return false;
+              if (STATE.keeping !== "ALL" && g.keeping !== STATE.keeping) return false;
+              return true;
+            });
+            const mins = matching.map(m => m.platforms?.[pm.key]?.min || m.platforms?.[pm.key]?.avg).filter(Boolean);
+            return mins.length ? Math.min(...mins) : null;
+          }),
+          backgroundColor: pm.color,
+          borderRadius: 4
+        }));
+        STATE.charts.filteredCategory = new Chart(ctxCat, {
+          type: "bar",
+          data: { labels: targetParts, datasets: catDatasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            plugins: { legend: { position: "top", labels: { font: { size: 10, weight: "bold" }, boxWidth: 10 } } },
+            scales: { y: { ticks: { callback: v => fmtNum(v) + "원" } } }
+          }
+        });
+      }
+
+      // [요청사항 반영] 아래 카테고리 차트 2 (#trackedTimeSeriesChart): 선택된 최대 5개 중복 탭 부위의 1~8차 시계열 단가 추이 차트
+      const ctxLine = document.getElementById("trackedTimeSeriesChart");
+      if (ctxLine) {
+        if (STATE.charts.trackedLine) STATE.charts.trackedLine.destroy();
+        const lineTitleEl = document.getElementById("view4ChartTitle");
+        if (lineTitleEl) {
+          lineTitleEl.textContent = `📈 [반응형 카테고리 차트 2] 선택 부위(${targetParts.join(" · ")}) 크롤링 회차별 단가 추이`;
+        }
+        const labels = ARCHIVE.snapshots.map((s, idx) => `#${idx + 1} (${s.collected_date.slice(5)})`);
+        const palette = ["#DC2626", "#2563EB", "#059669", "#D97706", "#7C3AED"];
+        const datasets = targetParts.map((partName, idx) => {
+          const dataPts = ARCHIVE.snapshots.map(sn => {
+            const matching = sn.grade_rows.filter(g => {
+              if (g.part !== partName) return false;
+              if (STATE.cattle !== "ALL" && g.cattle !== STATE.cattle) return false;
+              if (STATE.grade !== "ALL" && g.grade !== STATE.grade) return false;
+              if (STATE.keeping !== "ALL" && g.keeping !== STATE.keeping) return false;
+              return true;
+            });
+            if (!matching.length) return null;
+            const vals = matching.map(m => m.platforms?.["근본한우"]?.avg || m.comp_avg).filter(Boolean);
+            return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+          });
+          return {
+            label: `${partName}`,
+            data: dataPts,
+            borderColor: palette[idx % palette.length],
+            backgroundColor: palette[idx % palette.length],
+            borderWidth: 2.5,
+            tension: 0.25,
+            pointRadius: 4
+          };
+        });
+
+        STATE.charts.trackedLine = new Chart(ctxLine, {
+          type: "line",
+          data: { labels, datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            plugins: { legend: { position: "top", labels: { font: { size: 10, weight: "bold" }, boxWidth: 10 } } },
+            scales: { y: { ticks: { callback: v => fmtNum(v) + "원" } } }
+          }
+        });
+      }
+    }
+
+    function applyProductFilters() {
+      const snap = ARCHIVE.snapshots[STATE.currentSnapIdx];
+      const fPlat = document.getElementById("fltPlatform")?.value || "ALL";
+      const fStatus = document.getElementById("fltStatus")?.value || "ALL";
+      const fKw = (document.getElementById("fltKeyword")?.value || "").trim().toLowerCase();
+      const fSort = document.getElementById("fltSort")?.value || "PRICE_ASC";
+
+      let list = (snap.cohorts || []).filter(c => {
+        if (STATE.cattle !== "ALL" && c.cattle !== STATE.cattle) return false;
+        if (STATE.grade !== "ALL" && c.grade !== STATE.grade) return false;
+        if (STATE.keeping !== "ALL" && c.keeping !== STATE.keeping) return false;
+        if (STATE.major !== "ALL" && c.major !== STATE.major) return false;
+        // View 4에서 중복 탭(STATE.multiParts)이 선택된 경우 해당 부위들을 모두 포함
+        if (STATE.part !== "ALL") {
+          if (c.part !== STATE.part) return false;
+        } else if (STATE.currentView === 4 && STATE.multiParts.length > 0 && STATE.multiParts.length < 5) {
+          if (!STATE.multiParts.includes(c.part)) return false;
+        }
+        if (fPlat !== "ALL" && c.platform !== fPlat) return false;
+        if (fStatus === "LOW_STOCK" && !isLowStockQty(c.qty || 1, c.keeping)) return false;
+        if (fStatus === "FRESH_14" && !((c.elapsed || 0) <= 14)) return false;
+        if (fStatus === "AGED_15" && !((c.elapsed || 0) >= 15 && (c.elapsed || 0) <= 30)) return false;
+        if (fStatus === "OLD_31" && !((c.elapsed || 0) >= 31)) return false;
+        if (fStatus === "TRACKED" && !STATE.trackedKeys.has(getCohortKey(c))) return false;
+        if (fKw) {
+          const hay = `${c.cattle} ${c.grade} ${c.keeping} ${c.major} ${c.part} ${c.platform} ${c.brand} ${c.dt_range || ""}`.toLowerCase();
+          if (!hay.includes(fKw)) return false;
+        }
+        return true;
+      });
+
+      list.sort((a, b) => {
+        if (fSort === "TRACKED_FIRST") {
+          const ta = STATE.trackedKeys.has(getCohortKey(a)) ? 0 : 1;
+          const tb = STATE.trackedKeys.has(getCohortKey(b)) ? 0 : 1;
+          if (ta !== tb) return ta - tb;
+        }
+        if (fSort === "PRICE_DESC") return (b.min || 0) - (a.min || 0);
+        if (fSort === "SPREAD_DESC") return ((b.max || 0) - (b.min || 0)) - ((a.max || 0) - (a.min || 0));
+        if (fSort === "STOCK_ASC") return (a.qty || 0) - (b.qty || 0);
+        if (fSort === "STOCK_DESC") return (b.qty || 0) - (a.qty || 0);
+        return (a.min || 0) - (b.min || 0);
+      });
+
+      document.getElementById("filteredProductCount").textContent = fmtNum(list.length);
+
+      const tbody = document.getElementById("productDesktopBody");
+      if (tbody) {
+        tbody.innerHTML = list.slice(0, 260).map(c => {
+          const k = getCohortKey(c);
+          const isTrk = STATE.trackedKeys.has(k);
+          const uMin = expandUrl(c.min_url);
+          const uMax = expandUrl(c.max_url || c.min_url);
+          const lowLimit = getLowStockThreshold(c.keeping);
+          const isLow = isLowStockQty(c.qty || 1, c.keeping);
+
+          return `
+            <tr class="hover:bg-slate-50 ${isTrk ? "bg-amber-50/40" : ""}">
+              <td class="py-2.5 px-2 text-center">
+                <input type="checkbox" ${isTrk ? "checked" : ""} onchange="toggleTrackedItem('${escapeHtml(k)}')"
+                  class="w-4 h-4 rounded border-slate-300 text-blue-600 cursor-pointer" />
+              </td>
+              <td class="py-2.5 px-2.5">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="font-extrabold text-slate-900">${escapeHtml(c.platform)}</span>
+                  ${keepingBadge(c.keeping)}
+                </div>
+              </td>
+              <td class="py-2.5 px-2.5">
+                <div class="flex items-center gap-1 flex-wrap">
+                  ${cattleBadge(c.cattle)} ${gradeBadge(c.grade)}
+                </div>
+                <div class="font-extrabold text-slate-900 mt-0.5">[${escapeHtml(c.major || "-")}] ${escapeHtml(c.part)}</div>
+              </td>
+              <td class="py-2.5 px-2.5">${brandBadge(c.brand, c.platform === "근본한우", uMin)}</td>
+              <td class="py-2.5 px-2.5 text-right font-extrabold text-emerald-700 num-tab">
+                ${fmtLink(uMin, fmtNum(c.min) + "원/kg", "text-emerald-700 font-extrabold hover:underline")}
+              </td>
+              <td class="py-2.5 px-2.5 text-right font-bold text-slate-800 num-tab">${fmtNum(c.avg)}원/kg</td>
+              <td class="py-2.5 px-2.5 text-right font-extrabold text-amber-800 num-tab">
+                ${fmtLink(uMax, fmtNum(c.max) + "원/kg", "text-amber-800 font-extrabold hover:underline")}
+              </td>
+              <td class="py-2.5 px-2.5">
+                <div class="font-semibold text-slate-800 num-tab">${escapeHtml(c.dt_range || "-")} (${c.elapsed || 0}일)</div>
+                <div class="text-[10px] text-slate-500">${escapeHtml(c.age_bucket || "-")}</div>
+              </td>
+              <td class="py-2.5 px-2.5 text-right num-tab">
+                <span class="font-extrabold ${isLow ? "text-red-600" : "text-slate-900"}">${fmtNum(c.qty)}건</span>
+                ${isLow ? `<span class="block text-[10px] font-extrabold text-red-600">⚠️주의(${c.keeping}&lt;${lowLimit})</span>` : ""}
+              </td>
+              <td class="py-2.5 px-2.5 text-[11px]">
+                <div class="text-emerald-700">최저: ${c.cohort_min ? fmtLink(c.cohort_min_url, `${fmtNum(c.cohort_min)}원 (${c.cohort_min_b || "-"})`, "text-emerald-700 font-bold hover:underline") : "-"}</div>
+                <div class="text-amber-800">최고: ${c.cohort_max ? fmtLink(c.cohort_max_url, `${fmtNum(c.cohort_max)}원 (${c.cohort_max_b || "-"})`, "text-amber-800 font-bold hover:underline") : "-"}</div>
+              </td>
+              <td class="py-2.5 px-2.5 text-center">
+                <div class="flex flex-col gap-1 items-center">
+                  ${uMin ? `<a href="${escapeHtml(uMin)}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-emerald-700 hover:bg-emerald-600 text-white text-[10px] font-bold">최저가 ↗</a>` : ""}
+                  ${uMax ? `<a href="${escapeHtml(uMax)}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-navy-900 hover:bg-slate-700 text-white text-[10px] font-bold">최고가 ↗</a>` : ""}
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      }
+    }
+
+    // ===================== VIEW 5: 누적 DB 이력 & 시트 다운로드 =====================
+    function renderView5History() {
+      const tbody = document.getElementById("runsDesktopBody");
+      if (!tbody) return;
+      tbody.innerHTML = ARCHIVE.snapshots.map((sn, idx) => {
+        const pc = sn.platform_counts || {};
+        const wr = sn.geunbon_matched_count > 0
+          ? (sn.geunbon_win_count / sn.geunbon_matched_count * 100).toFixed(1) + "%"
+          : "-";
+        const isCur = idx === STATE.currentSnapIdx;
+        return `
+          <tr onclick="onChangeRunSnapshot(${idx})" class="cursor-pointer hover:bg-blue-50/60 transition ${isCur ? "bg-red-50/50 font-bold" : ""}">
+            <td class="py-3 px-3 font-extrabold text-blue-700 num-tab">#${idx + 1}회차 ${isCur ? '<span class="px-1.5 py-0.5 text-[10px] rounded bg-red-600 text-white ml-1">현재조회</span>' : ""}</td>
+            <td class="py-3 px-3 font-extrabold text-slate-900">${escapeHtml(sn.collected_date)}</td>
+            <td class="py-3 px-3 text-slate-500 num-tab">${escapeHtml(sn.updated_at || "-")}</td>
+            <td class="py-3 px-3 text-right font-extrabold text-slate-900 num-tab">${fmtNum(sn.total_raw_rows)}건</td>
+            <td class="py-3 px-3 text-right font-extrabold text-red-600 num-tab">${fmtNum(pc["근본한우"] || 0)}건</td>
+            <td class="py-3 px-3 text-right font-bold text-orange-600 num-tab">${fmtNum(pc["미트박스"] || 0)}건</td>
+            <td class="py-3 px-3 text-right num-tab">${fmtNum(pc["금천미트"] || 0)}건</td>
+            <td class="py-3 px-3 text-right num-tab">${fmtNum(pc["미트프렌즈"] || 0)}건</td>
+            <td class="py-3 px-3 text-right num-tab">${fmtNum(pc["탑미트"] || 0)}건</td>
+            <td class="py-3 px-3 text-right num-tab">${fmtNum(pc["본대로"] || 0)}건</td>
+            <td class="py-3 px-3 text-center num-tab">${sn.total_items_count}품목 / ${sn.total_grade_conditions_count}조건</td>
+            <td class="py-3 px-3 text-center font-extrabold text-emerald-700 num-tab">${wr} (${sn.geunbon_win_count}/${sn.geunbon_matched_count})</td>
+            <td class="py-3 px-3 text-right num-tab">거세 ${fmtNum(sn.geose_carcass_avg)}원 / 암소 ${fmtNum(sn.amso_carcass_avg)}원</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function exportCurrentViewCsv() {
+      const snap = ARCHIVE.snapshots[STATE.currentSnapIdx];
+      const rows = snap.grade_rows.filter(g => matchesGlobal5Filters(g, false));
+      const headers = ["수집일시", "축종", "등급", "보관상태", "대분류", "중분류", "근본한우_최저가", "근본한우_최고가", "타사통합_평균가", "편차(%)", "미트박스_최저가", "금천미트_최저가", "미트프렌즈_최저가", "탑미트_최저가", "본대로_최저가", "최저가URL", "최고가URL"];
+      const csvLines = [headers.join(",")];
+      rows.forEach(r => {
+        const p = r.platforms || {};
+        const line = [
+          snap.collected_date, r.cattle, r.grade, r.keeping, r.major, r.part,
+          p["근본한우"]?.min || p["근본한우"]?.avg || "", p["근본한우"]?.max || p["근본한우"]?.avg || "",
+          r.comp_avg || "", r.diff_pct ?? "",
+          p["미트박스"]?.min || "", p["금천미트"]?.min || "", p["미트프렌즈"]?.min || "", p["탑미트"]?.min || "", p["본대로"]?.min || "",
+          `"${expandUrl(r.min_url)}"`, `"${expandUrl(r.max_url)}"`
+        ];
+        csvLines.push(line.join(","));
+      });
+      const blob = new Blob(["\uFEFF" + csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `한우_6대플랫폼_비교_${snap.collected_date}.csv`;
+      a.click();
+    }
+
+    function isGitHubPagesStatic() {
+      return Boolean(window.__GH_PAGES_STATIC__ || (window.location && window.location.hostname.endsWith("github.io")));
+    }
+
+    async function triggerLiveCrawl() {
+      const btn = document.getElementById("btnSidebarCrawl");
+      if (isGitHubPagesStatic()) {
+        showToast("GitHub Pages 정적 배포 환경입니다. 평일 09:30 · 16:30 정기 크롤링 시 자동 동기화됩니다.", "ℹ️");
+        return;
+      }
+      try {
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = "<span>⏳ 6대 플랫폼 실시간 크롤링 중...</span>";
+        }
+        showToast("6대 플랫폼 실시간 크롤링을 시작했습니다. (약 2분 소요)", "🔄");
+        const res = await fetch("./api/run-now", { method: "POST" });
+        const data = await res.json();
+        showToast(data.message || "크롤링 진행 중...", "⏳");
+        const timer = setInterval(async () => {
+          try {
+            const sRes = await fetch("./api/status");
+            const sData = await sRes.json();
+            if (!sData.is_crawling) {
+              clearInterval(timer);
+              window.location.reload();
+            }
+          } catch (e) {}
+        }, 4000);
+      } catch (err) {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = "<span>🔄 6대 플랫폼 즉시 크롤링 (DB 누적)</span>";
+        }
+        showToast("로컬/터널 웹 서버 연결 시 즉시 크롤링이 실행됩니다.", "ℹ️");
+      }
+    }
+
+    async function refreshWebScheduleStatus() {
+      try {
+        const statusUrl = isGitHubPagesStatic() ? "./data/status.json" : "./api/status";
+        const res = await fetch(statusUrl, { cache: "no-store" });
+        const d = await res.json();
+        const el = document.getElementById("sidebarNextSchedule");
+        if (el && d.next_scheduled_run) el.textContent = d.next_scheduled_run;
+      } catch (e) {}
+    }
+
+    function renderAll() {
+      renderView1Dashboard();
+      renderComparisonMatrix();
+      renderView3ProductionDate();
+      renderTrackedPanel();
+      applyProductFilters();
+      renderView5History();
+    }
+
+    populateDynamicFilterOptions();
+    syncFilterControlsUI();
+    renderAll();
+    refreshWebScheduleStatus();
+  </script>
+</body>
+</html>
