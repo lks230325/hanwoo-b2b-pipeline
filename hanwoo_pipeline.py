@@ -856,6 +856,11 @@ def fetch_ekape_hanwoo_auction(session: requests.Session, today_str: str) -> Tup
         f"{summary['amso_avg']:,}" if summary["amso_avg"] else "-",
         len(rows_out),
     )
+    try:
+        import fetch_hanwoo_carcass_history_2024 as fhch
+        fhch.sync_hanwoo_carcass_history(force_full=False)
+    except Exception as exc:
+        logger.warning("EKAPE 2024~현재 시계열 증분 동기화 참고: %s", exc)
     return rows_out, summary
 
 

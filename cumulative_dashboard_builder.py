@@ -689,6 +689,18 @@ def _slim_archive_for_html(archive_payload: Dict[str, Any]) -> Dict[str, Any]:
 
     out = dict(archive_payload)
     out["snapshots"] = slim_snaps
+
+    # 2024.01.01 ~ 현재 누적 한우 도매 지육시세(연간/월간/주간/일간 비교 분석용) 병합
+    history_json_path = Path(__file__).resolve().parent / "output" / "hanwoo_carcass_history_2024.json"
+    try:
+        if not history_json_path.exists():
+            import fetch_hanwoo_carcass_history_2024 as fhch
+            out["carcass_sise"] = fhch.sync_hanwoo_carcass_history(force_full=True)
+        else:
+            out["carcass_sise"] = json.loads(history_json_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        logger.warning("한우 지육시세 히스토리 병합 참고: %s", exc)
+
     return out
 
 

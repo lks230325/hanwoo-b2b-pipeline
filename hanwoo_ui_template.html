@@ -680,59 +680,241 @@
             </div>
           </div>
 
-          <!-- 4) 축산물품질평가원(EKAPE) 한우 지육경락시세 차트 & 상세표 -->
-          <div class="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 lg:p-6 space-y-4">
-            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <!-- 4) [2024~현재 누적] 축산물품질평가원(EKAPE) 한우 도매 지육시세 연간·월간·주간·일간 비교 분석 & 셀차트 -->
+          <div id="carcassSiseSection" class="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 lg:p-6 space-y-5 min-w-0">
+            <div class="flex flex-wrap items-start justify-between gap-3 pb-3.5 border-b border-slate-100">
               <div>
-                <h3 class="text-sm lg:text-base font-extrabold text-slate-900">
-                  📈 축산물품질평가원(EKAPE) 한우 지육경락시세 차트 &amp; 등급별 추이 (거세/암소 · 등급 필터 연동)
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h2 class="text-base lg:text-lg font-extrabold text-slate-900">
+                    🐂 한우 도매 지육시세 2024~현재 시계열 비교 분석 (연간 · 월간 · 주간 · 일간)
+                  </h2>
+                  <span id="carcassDataCountBadge" class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-red-50 text-red-700 border border-red-200 num-tab">
+                    2024.01.02 ~ 현재 공식 지육시세 연동중
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">
+                  축산물품질평가원(EKAPE) 공식 도매시장 한우 지육 경락가격(2024년 1월~현재 누적)을 <strong>연간 · 월간 · 주간 · 일간 필터</strong> 및 <strong>축종(거세/암소/전체) · 등급별(1++~3등급)</strong>로 비교 분석합니다.
+                </p>
+              </div>
+
+              <!-- 연간 / 월간 / 주간 / 일간 원클릭 전환 필터 탭 -->
+              <div id="carcassGranularityBar" class="inline-flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <button type="button" onclick="setCarcassGranularity('YEAR')" data-cgran="YEAR"
+                  class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition">
+                  📅 연간 (연도별)
+                </button>
+                <button type="button" onclick="setCarcassGranularity('MONTH')" data-cgran="MONTH"
+                  class="px-3 py-1.5 rounded-lg text-xs font-extrabold bg-navy-900 text-white shadow-2xs transition">
+                  🗓️ 월간 (월별)
+                </button>
+                <button type="button" onclick="setCarcassGranularity('WEEK')" data-cgran="WEEK"
+                  class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition">
+                  📊 주간 (주간별)
+                </button>
+                <button type="button" onclick="setCarcassGranularity('DAY')" data-cgran="DAY"
+                  class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition">
+                  📍 일간 (일자별)
+                </button>
+              </div>
+            </div>
+
+            <!-- 지육시세 전용 다중 필터 컨트롤 바 -->
+            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div id="carcassPresetBar" class="flex flex-wrap items-center gap-1.5">
+                  <span class="text-[11px] font-extrabold text-slate-500 mr-1">빠른기간 필터:</span>
+                  <button type="button" onclick="setCarcassDatePreset('ALL')" data-cpreset="ALL"
+                    class="px-2.5 py-1 rounded-lg border text-[11px] font-extrabold bg-navy-900 text-white border-navy-900">전체 (2024~현재)</button>
+                  <button type="button" onclick="setCarcassDatePreset('2026')" data-cpreset="2026"
+                    class="px-2.5 py-1 rounded-lg border text-[11px] font-bold bg-white hover:bg-slate-100 text-slate-700 border-slate-300">2026년</button>
+                  <button type="button" onclick="setCarcassDatePreset('2025')" data-cpreset="2025"
+                    class="px-2.5 py-1 rounded-lg border text-[11px] font-bold bg-white hover:bg-slate-100 text-slate-700 border-slate-300">2025년</button>
+                  <button type="button" onclick="setCarcassDatePreset('2024')" data-cpreset="2024"
+                    class="px-2.5 py-1 rounded-lg border text-[11px] font-bold bg-white hover:bg-slate-100 text-slate-700 border-slate-300">2024년</button>
+                  <button type="button" onclick="setCarcassDatePreset('6M')" data-cpreset="6M"
+                    class="px-2.5 py-1 rounded-lg border text-[11px] font-bold bg-white hover:bg-slate-100 text-slate-700 border-slate-300">최근 6개월</button>
+                  <button type="button" onclick="setCarcassDatePreset('3M')" data-cpreset="3M"
+                    class="px-2.5 py-1 rounded-lg border text-[11px] font-bold bg-white hover:bg-slate-100 text-slate-700 border-slate-300">최근 3개월</button>
+                  <button type="button" onclick="setCarcassDatePreset('1M')" data-cpreset="1M"
+                    class="px-2.5 py-1 rounded-lg border text-[11px] font-bold bg-white hover:bg-slate-100 text-slate-700 border-slate-300">최근 1개월</button>
+                </div>
+                <button type="button" onclick="resetCarcassFilters()"
+                  class="px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[11px] font-extrabold transition">
+                  🔄 시세필터 초기화
+                </button>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-1">
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-500 mb-1">조회 시작일 (2024-01-01~)</label>
+                  <input id="carcassStartDate" type="date" min="2024-01-01" onchange="onChangeCarcassDateInput()"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold num-tab" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-500 mb-1">조회 종료일</label>
+                  <input id="carcassEndDate" type="date" min="2024-01-01" onchange="onChangeCarcassDateInput()"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold num-tab" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-red-700 mb-1">축종 기준 필터</label>
+                  <select id="carcassSexSelect" onchange="onChangeCarcassSex(this.value)"
+                    class="w-full rounded-lg border border-red-300 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-900">
+                    <option value="steer">🐂 한우거세 (거세 표준 지육가)</option>
+                    <option value="cow">🐄 한우암소 (암소 표준 지육가)</option>
+                    <option value="all">⚖️ 한우전체 (거세+암소 통합)</option>
+                    <option value="COMPARE_SEX">⚔️ 한우거세 vs 한우암소 동시비교</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-amber-700 mb-1">등급 기준 필터</label>
+                  <select id="carcassMetricSelect" onchange="onChangeCarcassMetric(this.value)"
+                    class="w-full rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-900">
+                    <option value="avg">⭐ 전국 평균 지육시세 (전체등급 평균)</option>
+                    <option value="g1pp">👑 1++등급 지육 경락단가</option>
+                    <option value="g1p">🥇 1+등급 지육 경락단가</option>
+                    <option value="g1">🥈 1등급 지육 경락단가</option>
+                    <option value="g2">🥉 2등급 지육 경락단가</option>
+                    <option value="g3">3등급 지육 경락단가</option>
+                    <option value="ALL_GRADES">📊 전 등급 동시비교 (평균·1++·1+·1·2·3)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-500 mb-1">비교 시트 정렬</label>
+                  <select id="carcassTableOrder" onchange="renderCarcassSiseSection()"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800">
+                    <option value="DESC">최신 기간부터 보기 ↓ (권장)</option>
+                    <option value="ASC">2024년 과거순 보기 ↑</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- 지육시세 핵심 요약 4단 KPI 카드 -->
+            <div id="carcassSummaryCards" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3"></div>
+
+            <!-- 1) 인터랙티브 시계열 비교 차트 (연간 / 월간 / 주간 / 일간 자동 전환) -->
+            <div class="rounded-2xl border border-slate-200 bg-slate-50/40 p-4">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div>
+                  <h3 id="carcassChartTitle" class="text-sm lg:text-base font-extrabold text-slate-900">
+                    📈 한우 지육시세 추이 비교 차트 (월간 기준)
+                  </h3>
+                  <p id="carcassChartSub" class="text-[11px] text-slate-500">
+                    선택한 기간 단위(연간·월간·주간·일간) 및 축종·등급 필터에 따른 평균 지육단가와 최고~최저 스펙트럼을 표시합니다.
+                  </p>
+                </div>
+              </div>
+              <div class="relative w-full h-[300px] sm:h-[340px] bg-white rounded-xl p-2.5 border border-slate-200">
+                <canvas id="carcassTrendChart"></canvas>
+              </div>
+            </div>
+
+            <!-- 2) 연도 × 월(1월~12월) 한눈에 보는 시즌 히트맵 셀차트 -->
+            <div class="space-y-2">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <h3 class="text-sm font-extrabold text-slate-900">
+                  🟦 연도×월별(1월~12월) 한우 지육시세 시즌 히트맵 셀차트 (2024년 ~ 현재)
                 </h3>
-                <p class="text-xs text-slate-500">상단 ①축종 / ②등급필터 또는 우측 전용 선택기를 변경하면 등급별 경락단가 차트와 시점별 추이가 즉시 반응합니다.</p>
+                <span class="text-[11px] text-slate-500">셀 내부 컬러 게이지 바와 배경 농도로 시즌별 시세 고점·저점을 비교하며, 특정 월 클릭 시 해당 월 일간 시세로 즉시 이동합니다.</span>
               </div>
-              <div class="flex items-center gap-2 flex-wrap">
-                <select id="ekapeCattleFilter" onchange="renderEkapeSection()" class="rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-800">
-                  <option value="ALL">한우거세 vs 한우암소 동시비교</option>
-                  <option value="한우거세">🐂 한우거세 단독</option>
-                  <option value="한우암소">🐄 한우암소 단독</option>
-                </select>
-                <select id="ekapeGradeFilter" onchange="renderEkapeSection()" class="rounded-lg border border-amber-300 bg-amber-50/50 px-2.5 py-1.5 text-xs font-bold text-slate-800">
-                  <option value="전국평균">추이 기준: 전국평균</option>
-                  <option value="1++(9)">추이 기준: 1++(9)</option>
-                  <option value="1++(8)">추이 기준: 1++(8)</option>
-                  <option value="1++(7)">추이 기준: 1++(7)</option>
-                  <option value="1+">추이 기준: 1+</option>
-                  <option value="1">추이 기준: 1</option>
-                  <option value="2">추이 기준: 2</option>
-                  <option value="3">추이 기준: 3</option>
-                </select>
+              <div class="sticky-table-wrap">
+                <table id="carcassYmMatrixTable" class="w-full text-left sticky-table">
+                  <thead id="carcassYmMatrixHead"></thead>
+                  <tbody id="carcassYmMatrixBody" class="divide-y divide-slate-200 text-xs"></tbody>
+                </table>
               </div>
             </div>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <div class="text-xs font-bold text-slate-700 mb-2">[한우거세 vs 한우암소] 등급별 지육 경락단가 (원/kg)</div>
-                <div class="relative w-full h-[240px]"><canvas id="ekapeGradeBarChart"></canvas></div>
+
+            <!-- 3) 선택 기준(연간 / 월간 / 주간 / 일간) 상세 시계열 비교 셀차트 시트 (스크롤 행·열 고정) -->
+            <div class="space-y-2.5">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 id="carcassCellTableTitle" class="text-sm font-extrabold text-slate-900">
+                    📊 기간별 한우 지육시세 상세 비교 시트 (스크롤 시 행·열 고정)
+                  </h3>
+                  <p class="text-[11px] text-slate-500">
+                    선택한 단위(연간·월간·주간·일간)별 평균 시세, 시세 포지션 게이지, 직전 기간 대비 ▲/▼ 등락률, 거세 vs 암소 격차, 등급별(1++~3등급) 단가를 한눈에 비교합니다.
+                  </p>
+                </div>
+                <span id="carcassPeriodRowCountBadge" class="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-bold num-tab">0개 구간</span>
               </div>
-              <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <div class="text-xs font-bold text-slate-700 mb-2">[시점별 경락가 추이] 전년동기 → 전월동기 → 전주동요일 → 전일 → 기준일</div>
-                <div class="relative w-full h-[240px]"><canvas id="ekapeTimelineChart"></canvas></div>
+
+              <div class="desktop-table-only sticky-table-wrap max-h-[420px]">
+                <table id="carcassPeriodCellTable" class="w-full text-left sticky-table">
+                  <thead>
+                    <tr class="bg-navy-900 text-white text-[11px]">
+                      <th class="py-2.5 px-3 rounded-tl-lg min-w-[125px]">기준 기간</th>
+                      <th class="py-2.5 px-3 text-right min-w-[115px]">선택 기준 시세</th>
+                      <th class="py-2.5 px-3 min-w-[210px]">📊 셀차트 (시세 포지션 &amp; 최저~최고)</th>
+                      <th class="py-2.5 px-3 min-w-[150px]">전기 대비 등락 (셀바)</th>
+                      <th class="py-2.5 px-3 text-right min-w-[140px]">구간 최저 ~ 최고</th>
+                      <th class="py-2.5 px-3 text-right min-w-[175px]">🐂거세 / 🐄암소 (격차)</th>
+                      <th class="py-2.5 px-3 text-right min-w-[235px]">등급별 (1++ / 1+ / 1 / 2 / 3등급)</th>
+                      <th class="py-2.5 px-3 text-center rounded-tr-lg min-w-[70px]">거래일수</th>
+                    </tr>
+                  </thead>
+                  <tbody id="carcassCellChartBody" class="divide-y divide-slate-200 text-xs"></tbody>
+                </table>
               </div>
+
+              <!-- 모바일 전용 셀차트 카드 리스트 -->
+              <div id="carcassMobileCellCards" class="mobile-cards-only space-y-2.5"></div>
             </div>
-            <div class="sticky-table-wrap max-h-[300px]">
-              <table class="w-full text-left sticky-table text-xs">
-                <thead>
-                  <tr class="bg-navy-900 text-white text-[11px]">
-                    <th class="py-2.5 px-3">축종구분</th>
-                    <th class="py-2.5 px-3">등급</th>
-                    <th class="py-2.5 px-3 text-right">기준일 경락가 (원/kg)</th>
-                    <th class="py-2.5 px-3 text-right">경매두수 (두)</th>
-                    <th class="py-2.5 px-3 text-right">전일 경락가 (증감률)</th>
-                    <th class="py-2.5 px-3 text-right">전주동요일 경락가 (증감률)</th>
-                    <th class="py-2.5 px-3 text-right">전월동기 경락가 (증감률)</th>
-                    <th class="py-2.5 px-3 text-right">전년동기 경락가 (증감률)</th>
-                  </tr>
-                </thead>
-                <tbody id="tbodyEkape" class="divide-y divide-slate-200">{{PRE_TBODY_EKAPE}}</tbody>
-              </table>
+
+            <!-- 4) 당일 기준 BMS 세분화 등급별(1++(9)/(8)/(7) 포함) 실시간 경락단가 상세 -->
+            <div class="pt-3 border-t border-slate-200 space-y-3">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 class="text-sm font-extrabold text-slate-900">
+                    🎯 최신 기준일 BMS 세분화 등급별(1++(9)·1++(8)·1++(7)~3등급) 거세 vs 암소 경락단가
+                  </h3>
+                  <p class="text-[11px] text-slate-500">마블링 스코어(BMS No.9/8/7) 세분화 등급별 최신 경락단가 및 전일·전주·전월·전년동기 대비 요약표입니다.</p>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <select id="ekapeCattleFilter" onchange="renderEkapeSection()" class="rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-800">
+                    <option value="ALL">한우거세 vs 한우암소 동시비교</option>
+                    <option value="한우거세">🐂 한우거세 단독</option>
+                    <option value="한우암소">🐄 한우암소 단독</option>
+                  </select>
+                  <select id="ekapeGradeFilter" onchange="renderEkapeSection()" class="rounded-lg border border-amber-300 bg-amber-50/50 px-2.5 py-1.5 text-xs font-bold text-slate-800">
+                    <option value="전국평균">추이 기준: 전국평균</option>
+                    <option value="1++(9)">추이 기준: 1++(9)</option>
+                    <option value="1++(8)">추이 기준: 1++(8)</option>
+                    <option value="1++(7)">추이 기준: 1++(7)</option>
+                    <option value="1+">추이 기준: 1+</option>
+                    <option value="1">추이 기준: 1</option>
+                    <option value="2">추이 기준: 2</option>
+                    <option value="3">추이 기준: 3</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                  <div class="text-xs font-bold text-slate-700 mb-2">[한우거세 vs 한우암소] BMS 세분화 등급별 지육 경락단가 (원/kg)</div>
+                  <div class="relative w-full h-[220px]"><canvas id="ekapeGradeBarChart"></canvas></div>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                  <div class="text-xs font-bold text-slate-700 mb-2">[시점별 경락가 추이] 전년동기 → 전월동기 → 전주동요일 → 전일 → 기준일</div>
+                  <div class="relative w-full h-[220px]"><canvas id="ekapeTimelineChart"></canvas></div>
+                </div>
+              </div>
+              <div class="sticky-table-wrap max-h-[260px]">
+                <table class="w-full text-left sticky-table text-xs">
+                  <thead>
+                    <tr class="bg-navy-900 text-white text-[11px]">
+                      <th class="py-2.5 px-3">축종구분</th>
+                      <th class="py-2.5 px-3">등급</th>
+                      <th class="py-2.5 px-3 text-right">기준일 경락가 (원/kg)</th>
+                      <th class="py-2.5 px-3 text-right">경매두수 (두)</th>
+                      <th class="py-2.5 px-3 text-right">전일 경락가 (증감률)</th>
+                      <th class="py-2.5 px-3 text-right">전주동요일 경락가 (증감률)</th>
+                      <th class="py-2.5 px-3 text-right">전월동기 경락가 (증감률)</th>
+                      <th class="py-2.5 px-3 text-right">전년동기 경락가 (증감률)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyEkape" class="divide-y divide-slate-200">{{PRE_TBODY_EKAPE}}</tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -1226,12 +1408,44 @@
       charts: {
         mainBar: null,
         stockDoughnut: null,
+        carcassTrend: null,
         ekapeGradeBar: null,
         ekapeTimeline: null,
         prodDateSpread: null,
         filteredCategory: null,
         trackedLine: null
+      },
+      carcass: {
+        initialized: false,
+        granularity: "MONTH", // YEAR | MONTH | WEEK | DAY
+        preset: "ALL",        // ALL | 2026 | 2025 | 2024 | 6M | 3M | 1M | CUSTOM
+        startDate: "2024-01-01",
+        endDate: "2026-12-31",
+        sex: "steer",         // steer | cow | all | COMPARE_SEX
+        metric: "avg"         // avg | g1pp | g1p | g1 | g2 | g3 | ALL_GRADES
       }
+    };
+
+    const CARCASS_GRAN_LABELS = {
+      YEAR: "연간 (연도별)",
+      MONTH: "월간 (월별)",
+      WEEK: "주간 (주간별)",
+      DAY: "일간 (일자별)"
+    };
+    const CARCASS_SEX_LABELS = {
+      steer: "🐂 한우거세",
+      cow: "🐄 한우암소",
+      all: "⚖️ 한우전체",
+      COMPARE_SEX: "⚔️ 거세 vs 암소 동시비교"
+    };
+    const CARCASS_METRIC_LABELS = {
+      avg: "⭐ 전국 평균 지육시세",
+      g1pp: "👑 1++등급 지육 경락단가",
+      g1p: "🥇 1+등급 지육 경락단가",
+      g1: "🥈 1등급 지육 경락단가",
+      g2: "🥉 2등급 지육 경락단가",
+      g3: "3등급 지육 경락단가",
+      ALL_GRADES: "📊 전 등급 동시비교 (평균·1++·1+·1·2·3)"
     };
 
     // [요청사항 반영] 품절/주의품목 기준: 냉장 재고 5개 미만 / 냉동 재고 10개 미만
@@ -1405,6 +1619,19 @@
     // ===================== 한우 필수 5대 필터 + 부위 탭(단일 & 최대 5개 중복 선택) 제어 =====================
     function setGlobalFilter(field, val) {
       STATE[field] = val || "ALL";
+      if (field === "cattle") {
+        if (STATE.cattle === "한우거세") STATE.carcass.sex = "steer";
+        else if (STATE.cattle === "한우암소") STATE.carcass.sex = "cow";
+        else STATE.carcass.sex = "COMPARE_SEX";
+      }
+      if (field === "grade") {
+        if (STATE.grade.startsWith("1++")) STATE.carcass.metric = "g1pp";
+        else if (STATE.grade === "1+") STATE.carcass.metric = "g1p";
+        else if (STATE.grade === "1") STATE.carcass.metric = "g1";
+        else if (STATE.grade === "2") STATE.carcass.metric = "g2";
+        else if (STATE.grade === "3") STATE.carcass.metric = "g3";
+        else STATE.carcass.metric = "avg";
+      }
       if (field === "keeping") {
         // 상단 글로벌 보관상태를 변경하면 브리핑/스코어보드 보관상태도 함께 동기화
         STATE.briefingKeeping = STATE.keeping;
@@ -2030,7 +2257,754 @@
       });
     }
 
+    // ===================== [2024~현재] 한우 도매 지육시세 연간·월간·주간·일간 비교 분석 =====================
+    function getCarcassRowVal(row, sexKey, metricKey) {
+      const sKey = (sexKey === "COMPARE_SEX" || !sexKey) ? "steer" : sexKey;
+      const mKey = (metricKey === "ALL_GRADES" || !metricKey) ? "avg" : metricKey;
+      const obj = row[sKey] || row.steer || row.all || {};
+      return Number(obj[mKey] || obj.avg || 0);
+    }
+
+    function syncCarcassControlUI() {
+      const gran = STATE.carcass.granularity || "MONTH";
+      document.querySelectorAll("#carcassGranularityBar [data-cgran]").forEach(btn => {
+        const g = btn.getAttribute("data-cgran");
+        btn.className = g === gran
+          ? "px-3 py-1.5 rounded-lg text-xs font-extrabold bg-navy-900 text-white shadow-2xs transition"
+          : "px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition";
+      });
+
+      const preset = STATE.carcass.preset || "ALL";
+      document.querySelectorAll("#carcassPresetBar [data-cpreset]").forEach(btn => {
+        const p = btn.getAttribute("data-cpreset");
+        btn.className = p === preset
+          ? "px-2.5 py-1 rounded-lg border text-[11px] font-extrabold bg-navy-900 text-white border-navy-900"
+          : "px-2.5 py-1 rounded-lg border text-[11px] font-bold bg-white hover:bg-slate-100 text-slate-700 border-slate-300";
+      });
+
+      const sIn = document.getElementById("carcassStartDate");
+      const eIn = document.getElementById("carcassEndDate");
+      if (sIn && STATE.carcass.startDate) sIn.value = STATE.carcass.startDate;
+      if (eIn && STATE.carcass.endDate) eIn.value = STATE.carcass.endDate;
+
+      const sexSel = document.getElementById("carcassSexSelect");
+      if (sexSel) sexSel.value = STATE.carcass.sex || "steer";
+
+      const metSel = document.getElementById("carcassMetricSelect");
+      if (metSel) metSel.value = STATE.carcass.metric || "avg";
+    }
+
+    function setCarcassGranularity(gran) {
+      STATE.carcass.granularity = gran || "MONTH";
+      syncCarcassControlUI();
+      renderCarcassSiseSection();
+    }
+
+    function setCarcassDatePreset(preset) {
+      const sise = ARCHIVE.carcass_sise || {};
+      const maxD = sise.max_date || "2026-11-23";
+      STATE.carcass.preset = preset || "ALL";
+      if (preset === "ALL") {
+        STATE.carcass.startDate = "2024-01-01";
+        STATE.carcass.endDate = maxD;
+      } else if (preset === "2026") {
+        STATE.carcass.startDate = "2026-01-01";
+        STATE.carcass.endDate = maxD;
+      } else if (preset === "2025") {
+        STATE.carcass.startDate = "2025-01-01";
+        STATE.carcass.endDate = "2025-12-31";
+      } else if (preset === "2024") {
+        STATE.carcass.startDate = "2024-01-01";
+        STATE.carcass.endDate = "2024-12-31";
+      } else {
+        const dt = new Date(maxD + "T00:00:00");
+        const monthsBack = preset === "6M" ? 6 : (preset === "3M" ? 3 : 1);
+        dt.setMonth(dt.getMonth() - monthsBack);
+        const y = dt.getFullYear();
+        const m = String(dt.getMonth() + 1).padStart(2, "0");
+        const d = String(dt.getDate()).padStart(2, "0");
+        STATE.carcass.startDate = `${y}-${m}-${d}`;
+        STATE.carcass.endDate = maxD;
+        if (preset === "1M" && STATE.carcass.granularity === "YEAR") {
+          STATE.carcass.granularity = "DAY";
+        }
+      }
+      syncCarcassControlUI();
+      renderCarcassSiseSection();
+    }
+
+    function onChangeCarcassDateInput() {
+      const maxD = ARCHIVE.carcass_sise?.max_date || "2026-12-31";
+      const sVal = document.getElementById("carcassStartDate")?.value || "2024-01-01";
+      const eVal = document.getElementById("carcassEndDate")?.value || maxD;
+      STATE.carcass.preset = "CUSTOM";
+      STATE.carcass.startDate = sVal < "2024-01-01" ? "2024-01-01" : sVal;
+      STATE.carcass.endDate = eVal < STATE.carcass.startDate ? STATE.carcass.startDate : eVal;
+      syncCarcassControlUI();
+      renderCarcassSiseSection();
+    }
+
+    function onChangeCarcassSex(val) {
+      STATE.carcass.sex = val || "steer";
+      syncCarcassControlUI();
+      renderCarcassSiseSection();
+    }
+
+    function onChangeCarcassMetric(val) {
+      STATE.carcass.metric = val || "avg";
+      syncCarcassControlUI();
+      renderCarcassSiseSection();
+    }
+
+    function resetCarcassFilters() {
+      const maxD = ARCHIVE.carcass_sise?.max_date || "2026-12-31";
+      STATE.carcass.granularity = "MONTH";
+      STATE.carcass.preset = "ALL";
+      STATE.carcass.startDate = "2024-01-01";
+      STATE.carcass.endDate = maxD;
+      STATE.carcass.sex = "steer";
+      STATE.carcass.metric = "avg";
+      const ordSel = document.getElementById("carcassTableOrder");
+      if (ordSel) ordSel.value = "DESC";
+      syncCarcassControlUI();
+      renderCarcassSiseSection();
+    }
+
+    function aggregateCarcassBuckets(rows, granularity, sexKey, metricKey) {
+      const map = new Map();
+      const effSex = sexKey === "COMPARE_SEX" ? "steer" : (sexKey || "steer");
+      const effMet = metricKey === "ALL_GRADES" ? "avg" : (metricKey || "avg");
+
+      for (const r of rows) {
+        let key = "";
+        let label = "";
+        if (granularity === "YEAR") {
+          key = String(r.y);
+          label = `${r.y}년`;
+        } else if (granularity === "MONTH") {
+          key = r.m;
+          label = r.m;
+        } else if (granularity === "WEEK") {
+          key = r.w;
+          label = r.w;
+        } else {
+          key = r.d;
+          label = r.d;
+        }
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            label,
+            startDate: r.d,
+            endDate: r.d,
+            vals: [],
+            steerVals: [],
+            cowVals: [],
+            allVals: [],
+            avgVals: [],
+            g1ppVals: [],
+            g1pVals: [],
+            g1Vals: [],
+            g2Vals: [],
+            g3Vals: [],
+            days: 0
+          });
+        }
+        const b = map.get(key);
+        if (r.d < b.startDate) b.startDate = r.d;
+        if (r.d > b.endDate) b.endDate = r.d;
+
+        const mainV = getCarcassRowVal(r, effSex, effMet);
+        if (mainV > 0) b.vals.push(mainV);
+
+        const sv = getCarcassRowVal(r, "steer", effMet);
+        const cv = getCarcassRowVal(r, "cow", effMet);
+        const av = getCarcassRowVal(r, "all", effMet);
+        if (sv > 0) b.steerVals.push(sv);
+        if (cv > 0) b.cowVals.push(cv);
+        if (av > 0) b.allVals.push(av);
+
+        const sObj = r[effSex] || r.steer || r.all || {};
+        if (sObj.avg > 0) b.avgVals.push(sObj.avg);
+        if (sObj.g1pp > 0) b.g1ppVals.push(sObj.g1pp);
+        if (sObj.g1p > 0) b.g1pVals.push(sObj.g1p);
+        if (sObj.g1 > 0) b.g1Vals.push(sObj.g1);
+        if (sObj.g2 > 0) b.g2Vals.push(sObj.g2);
+        if (sObj.g3 > 0) b.g3Vals.push(sObj.g3);
+        b.days += 1;
+      }
+
+      const avgInt = arr => arr.length ? Math.round(arr.reduce((a, c) => a + c, 0) / arr.length) : 0;
+      const buckets = Array.from(map.values()).sort((a, b) => a.key.localeCompare(b.key));
+
+      buckets.forEach((b, idx) => {
+        b.avg = avgInt(b.vals);
+        b.min = b.vals.length ? Math.min(...b.vals) : 0;
+        b.max = b.vals.length ? Math.max(...b.vals) : 0;
+        b.steerAvg = avgInt(b.steerVals);
+        b.cowAvg = avgInt(b.cowVals);
+        b.allAvg = avgInt(b.allVals);
+        b.gradeAvg = avgInt(b.avgVals);
+        b.g1ppAvg = avgInt(b.g1ppVals);
+        b.g1pAvg = avgInt(b.g1pVals);
+        b.g1Avg = avgInt(b.g1Vals);
+        b.g2Avg = avgInt(b.g2Vals);
+        b.g3Avg = avgInt(b.g3Vals);
+        if (idx > 0 && buckets[idx - 1].avg > 0 && b.avg > 0) {
+          b.prevDiff = b.avg - buckets[idx - 1].avg;
+          b.prevPct = Number(((b.prevDiff / buckets[idx - 1].avg) * 100).toFixed(2));
+        } else {
+          b.prevDiff = 0;
+          b.prevPct = 0;
+        }
+      });
+      return buckets;
+    }
+
+    function renderCarcassYmHeatmap(allRows, sexKey, metricKey) {
+      const headEl = document.getElementById("carcassYmMatrixHead");
+      const bodyEl = document.getElementById("carcassYmMatrixBody");
+      if (!headEl || !bodyEl) return;
+
+      const years = Array.from(new Set(allRows.map(r => r.y))).sort((a, b) => a - b);
+      const cellMap = {};
+      const allMonthAvgs = [];
+
+      years.forEach(yr => { cellMap[yr] = {}; });
+      for (const r of allRows) {
+        const v = getCarcassRowVal(r, sexKey, metricKey);
+        if (v <= 0) continue;
+        const mm = Number(r.m.split("-")[1]);
+        if (!cellMap[r.y][mm]) cellMap[r.y][mm] = [];
+        cellMap[r.y][mm].push(v);
+      }
+
+      const avgMatrix = {};
+      years.forEach(yr => {
+        avgMatrix[yr] = {};
+        let yrAll = [];
+        for (let m = 1; m <= 12; m++) {
+          const arr = cellMap[yr][m] || [];
+          if (arr.length > 0) {
+            const av = Math.round(arr.reduce((a, c) => a + c, 0) / arr.length);
+            avgMatrix[yr][m] = { avg: av, days: arr.length };
+            allMonthAvgs.push(av);
+            yrAll = yrAll.concat(arr);
+          } else {
+            avgMatrix[yr][m] = null;
+          }
+        }
+        avgMatrix[yr].yearAvg = yrAll.length ? Math.round(yrAll.reduce((a, c) => a + c, 0) / yrAll.length) : 0;
+        avgMatrix[yr].yearDays = yrAll.length;
+      });
+
+      const minM = allMonthAvgs.length ? Math.min(...allMonthAvgs) : 15000;
+      const maxM = allMonthAvgs.length ? Math.max(...allMonthAvgs) : 26000;
+      const spanM = Math.max(maxM - minM, 1);
+
+      headEl.innerHTML = `
+        <tr class="bg-navy-900 text-white text-[11px]">
+          <th class="py-2 px-3 rounded-tl-lg min-w-[76px]">연도</th>
+          ${Array.from({ length: 12 }, (_, i) => `<th class="py-2 px-2 text-center min-w-[74px]">${i + 1}월</th>`).join("")}
+          <th class="py-2 px-3 text-right rounded-tr-lg min-w-[92px] bg-slate-800">연평균</th>
+        </tr>
+      `;
+
+      bodyEl.innerHTML = years.slice().reverse().map(yr => {
+        const colsHtml = Array.from({ length: 12 }, (_, idx) => {
+          const m = idx + 1;
+          const cell = avgMatrix[yr][m];
+          if (!cell) {
+            return `<td class="py-2 px-2 text-center text-slate-300 num-tab">-</td>`;
+          }
+          const ratio = Math.min(1, Math.max(0, (cell.avg - minM) / spanM));
+          const pctW = Math.round(18 + ratio * 82);
+          let bgStyle = "";
+          let barColor = "#2563EB";
+          let txtCls = "text-slate-800 font-bold";
+          if (ratio >= 0.75) {
+            bgStyle = "background-color: rgba(220, 38, 38, 0.13);";
+            barColor = "#DC2626";
+            txtCls = "text-red-900 font-extrabold";
+          } else if (ratio >= 0.5) {
+            bgStyle = "background-color: rgba(245, 158, 11, 0.12);";
+            barColor = "#D97706";
+            txtCls = "text-amber-900 font-bold";
+          } else if (ratio <= 0.25) {
+            bgStyle = "background-color: rgba(16, 185, 129, 0.11);";
+            barColor = "#059669";
+            txtCls = "text-emerald-900 font-bold";
+          } else {
+            bgStyle = "background-color: rgba(59, 130, 246, 0.08);";
+          }
+          const ymStr = `${yr}-${String(m).padStart(2, "0")}`;
+          return `
+            <td style="${bgStyle}" class="py-2 px-2 align-middle cursor-pointer hover:ring-1 hover:ring-navy-900 transition"
+                title="${ymStr} 평균 ${fmtNum(cell.avg)}원/kg (${cell.days}거래일) — 클릭 시 해당 월 일간 시세 조회"
+                onclick="STATE.carcass.preset='CUSTOM'; STATE.carcass.startDate='${ymStr}-01'; STATE.carcass.endDate='${ymStr}-31'; STATE.carcass.granularity='DAY'; syncCarcassControlUI(); renderCarcassSiseSection();">
+              <div class="text-right text-[11px] num-tab ${txtCls}">${fmtNum(cell.avg)}</div>
+              <div class="w-full h-1.5 bg-slate-200/80 rounded-full overflow-hidden mt-1">
+                <div style="width:${pctW}%; background:${barColor};" class="h-full rounded-full"></div>
+              </div>
+            </td>
+          `;
+        }).join("");
+
+        return `
+          <tr>
+            <td class="py-2.5 px-3 font-extrabold text-slate-900 num-tab bg-slate-50 cursor-pointer hover:text-blue-700"
+                title="${yr}년 전체 조회"
+                onclick="setCarcassDatePreset('${yr}')">${yr}년</td>
+            ${colsHtml}
+            <td class="py-2.5 px-3 text-right font-extrabold text-navy-900 bg-slate-100/90 num-tab">
+              <div>${fmtNum(avgMatrix[yr].yearAvg)}원</div>
+              <div class="text-[10px] font-semibold text-slate-500">${avgMatrix[yr].yearDays}거래일</div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function renderCarcassSiseSection() {
+      const sec = document.getElementById("carcassSiseSection");
+      if (!sec) return;
+      const sise = ARCHIVE.carcass_sise;
+      if (!sise || !Array.isArray(sise.daily_rows) || sise.daily_rows.length === 0) {
+        const badge = document.getElementById("carcassDataCountBadge");
+        if (badge) badge.textContent = "시세 데이터 준비중";
+        return;
+      }
+
+      if (!STATE.carcass.initialized) {
+        STATE.carcass.startDate = "2024-01-01";
+        STATE.carcass.endDate = sise.max_date || "2026-12-31";
+        STATE.carcass.initialized = true;
+      } else if (STATE.carcass.preset === "ALL" && sise.max_date) {
+        STATE.carcass.endDate = sise.max_date;
+      }
+      syncCarcassControlUI();
+
+      const allRows = sise.daily_rows;
+      const badge = document.getElementById("carcassDataCountBadge");
+      if (badge) {
+        badge.textContent = `${sise.min_date} ~ ${sise.max_date} · 누적 ${fmtNum(sise.total_days)}거래일`;
+      }
+
+      const sDate = STATE.carcass.startDate || "2024-01-01";
+      const eDate = STATE.carcass.endDate || sise.max_date;
+      const filteredRows = allRows.filter(r => r.d >= sDate && r.d <= eDate);
+      const sex = STATE.carcass.sex || "steer";
+      const metric = STATE.carcass.metric || "avg";
+      const gran = STATE.carcass.granularity || "MONTH";
+      const sexLabel = CARCASS_SEX_LABELS[sex] || CARCASS_SEX_LABELS.steer;
+      const metricLabel = CARCASS_METRIC_LABELS[metric] || CARCASS_METRIC_LABELS.avg;
+      const granLabel = CARCASS_GRAN_LABELS[gran] || CARCASS_GRAN_LABELS.MONTH;
+
+      renderCarcassYmHeatmap(allRows, sex, metric);
+
+      const summaryEl = document.getElementById("carcassSummaryCards");
+      if (filteredRows.length === 0) {
+        if (summaryEl) {
+          summaryEl.innerHTML = `<div class="col-span-4 py-6 text-center text-xs font-bold text-slate-400">선택하신 조회 기간(${sDate} ~ ${eDate})에 해당하는 경락 거래일 데이터가 없습니다.</div>`;
+        }
+        const cb = document.getElementById("carcassCellChartBody");
+        if (cb) cb.innerHTML = "";
+        const mb = document.getElementById("carcassMobileCellCards");
+        if (mb) mb.innerHTML = "";
+        return;
+      }
+
+      const latestRow = filteredRows[filteredRows.length - 1];
+      const prevRow = filteredRows.length >= 2 ? filteredRows[filteredRows.length - 2] : null;
+      const latestVal = getCarcassRowVal(latestRow, sex, metric);
+      const prevVal = prevRow ? getCarcassRowVal(prevRow, sex, metric) : 0;
+      const dayDiff = prevVal > 0 ? (latestVal - prevVal) : 0;
+      const dayPct = prevVal > 0 ? ((dayDiff / prevVal) * 100).toFixed(2) : "0.00";
+
+      let sumVal = 0;
+      let validCnt = 0;
+      let maxRow = filteredRows[0];
+      let minRow = filteredRows[0];
+      let maxVal = getCarcassRowVal(filteredRows[0], sex, metric);
+      let minVal = maxVal > 0 ? maxVal : 999999;
+
+      for (const r of filteredRows) {
+        const v = getCarcassRowVal(r, sex, metric);
+        if (v <= 0) continue;
+        sumVal += v;
+        validCnt += 1;
+        if (v >= maxVal) { maxVal = v; maxRow = r; }
+        if (v <= minVal) { minVal = v; minRow = r; }
+      }
+      if (minVal === 999999) minVal = 0;
+      const periodAvg = validCnt > 0 ? Math.round(sumVal / validCnt) : 0;
+      const buckets = aggregateCarcassBuckets(filteredRows, gran, sex, metric);
+
+      if (summaryEl) {
+        const diffSign = dayDiff > 0 ? "▲" : (dayDiff < 0 ? "▼" : "-");
+        const diffCls = dayDiff > 0 ? "text-red-600 bg-red-50 border-red-200" : (dayDiff < 0 ? "text-blue-600 bg-blue-50 border-blue-200" : "text-slate-600 bg-slate-100 border-slate-200");
+        summaryEl.innerHTML = `
+          <div class="rounded-xl border border-red-200 bg-red-50/40 p-3.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-red-800">최신 지육시세 (${latestRow.d})</span>
+              <span class="px-1.5 py-0.5 rounded border text-[10px] font-extrabold num-tab ${diffCls}">${diffSign} ${fmtNum(Math.abs(dayDiff))}원 (${dayDiff > 0 ? "+" : ""}${dayPct}%)</span>
+            </div>
+            <div class="text-xl font-extrabold text-slate-900 mt-1 num-tab">${fmtNum(latestVal)}<span class="text-xs font-bold text-slate-500 ml-0.5">원/kg</span></div>
+            <div class="text-[11px] text-slate-500 mt-0.5 truncate">${sexLabel} · ${metricLabel}</div>
+          </div>
+          <div class="rounded-xl border border-slate-200 bg-white p-3.5">
+            <div class="text-[11px] font-bold text-slate-500">선택기간 평균 시세 (${granLabel})</div>
+            <div class="text-xl font-extrabold text-navy-900 mt-1 num-tab">${fmtNum(periodAvg)}<span class="text-xs font-bold text-slate-500 ml-0.5">원/kg</span></div>
+            <div class="text-[11px] text-slate-500 mt-0.5 num-tab">거래일 ${fmtNum(filteredRows.length)}일 · 집계구간 ${fmtNum(buckets.length)}개</div>
+          </div>
+          <div class="rounded-xl border border-amber-200 bg-amber-50/40 p-3.5">
+            <div class="text-[11px] font-bold text-amber-800">기간 내 최고 지육시세 (고점)</div>
+            <div class="text-xl font-extrabold text-red-700 mt-1 num-tab">${fmtNum(maxVal)}<span class="text-xs font-bold text-slate-500 ml-0.5">원/kg</span></div>
+            <div class="text-[11px] text-slate-600 mt-0.5 num-tab">기록일: ${maxRow.d} (평균대비 +${fmtNum(maxVal - periodAvg)}원)</div>
+          </div>
+          <div class="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3.5">
+            <div class="text-[11px] font-bold text-emerald-800">기간 내 최저 지육시세 (저점)</div>
+            <div class="text-xl font-extrabold text-emerald-700 mt-1 num-tab">${fmtNum(minVal)}<span class="text-xs font-bold text-slate-500 ml-0.5">원/kg</span></div>
+            <div class="text-[11px] text-slate-600 mt-0.5 num-tab">기록일: ${minRow.d} (고저편차 ${fmtNum(maxVal - minVal)}원)</div>
+          </div>
+        `;
+      }
+
+      const chartTitleEl = document.getElementById("carcassChartTitle");
+      const chartSubEl = document.getElementById("carcassChartSub");
+      if (chartTitleEl) {
+        chartTitleEl.textContent = `📈 한우 지육시세 비교 차트 — ${granLabel} [${sexLabel} · ${metricLabel}]`;
+      }
+      if (chartSubEl) {
+        chartSubEl.textContent = `조회 구간: ${sDate} ~ ${eDate} (${fmtNum(filteredRows.length)}거래일 → ${fmtNum(buckets.length)}개 구간 집계, 단위: 원/kg)`;
+      }
+
+      const ctx = document.getElementById("carcassTrendChart")?.getContext("2d");
+      if (ctx && typeof Chart !== "undefined") {
+        if (STATE.charts.carcassTrend) STATE.charts.carcassTrend.destroy();
+        const labels = buckets.map(b => b.label);
+        let datasets = [];
+
+        if (sex === "COMPARE_SEX") {
+          const ptR = buckets.length > 80 ? 0 : 2.5;
+          datasets = [
+            {
+              type: "line",
+              label: `🐂 한우거세 (${metricLabel})`,
+              data: buckets.map(b => b.steerAvg || null),
+              borderColor: "#DC2626",
+              backgroundColor: "rgba(220, 38, 38, 0.08)",
+              borderWidth: 2.6,
+              pointRadius: ptR,
+              tension: 0.25
+            },
+            {
+              type: "line",
+              label: `🐄 한우암소 (${metricLabel})`,
+              data: buckets.map(b => b.cowAvg || null),
+              borderColor: "#2563EB",
+              backgroundColor: "rgba(37, 99, 235, 0.08)",
+              borderWidth: 2.4,
+              pointRadius: ptR,
+              tension: 0.25
+            },
+            {
+              type: "line",
+              label: `⚖️ 한우전체 통합 (${metricLabel})`,
+              data: buckets.map(b => b.allAvg || null),
+              borderColor: "#0F172A",
+              borderDash: [4, 3],
+              borderWidth: 2,
+              pointRadius: ptR,
+              tension: 0.25
+            }
+          ];
+        } else if (metric === "ALL_GRADES") {
+          const ptR = buckets.length > 80 ? 0 : 2.2;
+          datasets = [
+            { type: "line", label: "👑 1++등급", data: buckets.map(b => b.g1ppAvg || null), borderColor: "#DC2626", borderWidth: 2.5, pointRadius: ptR, tension: 0.25 },
+            { type: "line", label: "🥇 1+등급", data: buckets.map(b => b.g1pAvg || null), borderColor: "#D97706", borderWidth: 2.2, pointRadius: ptR, tension: 0.25 },
+            { type: "line", label: "⭐ 전국평균", data: buckets.map(b => b.gradeAvg || null), borderColor: "#0F172A", borderWidth: 2.6, borderDash: [3, 2], pointRadius: ptR, tension: 0.25 },
+            { type: "line", label: "🥈 1등급", data: buckets.map(b => b.g1Avg || null), borderColor: "#2563EB", borderWidth: 2.0, pointRadius: ptR, tension: 0.25 },
+            { type: "line", label: "🥉 2등급", data: buckets.map(b => b.g2Avg || null), borderColor: "#059669", borderWidth: 1.8, pointRadius: ptR, tension: 0.25 },
+            { type: "line", label: "3등급", data: buckets.map(b => b.g3Avg || null), borderColor: "#64748B", borderWidth: 1.5, borderDash: [4, 4], pointRadius: ptR, tension: 0.25 }
+          ];
+        } else if (gran === "YEAR") {
+          datasets = [
+            {
+              type: "bar",
+              label: `연평균 (${sexLabel} · ${metricLabel})`,
+              data: buckets.map(b => b.avg),
+              backgroundColor: "rgba(30, 58, 138, 0.82)",
+              borderColor: "#1E3A8A",
+              borderWidth: 1,
+              borderRadius: 8,
+              maxBarThickness: 64,
+              order: 2
+            },
+            {
+              type: "line",
+              label: "연중 최고 시세",
+              data: buckets.map(b => b.max),
+              borderColor: "#DC2626",
+              backgroundColor: "#DC2626",
+              borderWidth: 2.2,
+              pointRadius: 4,
+              tension: 0.2,
+              order: 1
+            },
+            {
+              type: "line",
+              label: "연중 최저 시세",
+              data: buckets.map(b => b.min),
+              borderColor: "#059669",
+              backgroundColor: "#059669",
+              borderWidth: 2.2,
+              pointRadius: 4,
+              tension: 0.2,
+              order: 1
+            }
+          ];
+        } else if (gran === "DAY") {
+          const ma5 = buckets.map((b, i) => {
+            const win = buckets.slice(Math.max(0, i - 4), i + 1);
+            return Math.round(win.reduce((acc, cur) => acc + cur.avg, 0) / win.length);
+          });
+          datasets = [
+            {
+              type: "line",
+              label: `일별 지육시세 (${sexLabel} · ${metricLabel})`,
+              data: buckets.map(b => b.avg),
+              borderColor: "#2563EB",
+              backgroundColor: "rgba(37, 99, 235, 0.10)",
+              fill: true,
+              borderWidth: buckets.length > 180 ? 1.4 : 2.2,
+              pointRadius: buckets.length > 100 ? 0 : 2.5,
+              tension: 0.2
+            },
+            {
+              type: "line",
+              label: "5거래일 이동평균",
+              data: ma5,
+              borderColor: "#DC2626",
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.3
+            }
+          ];
+        } else {
+          const ptR = buckets.length > 60 ? 1.5 : 3.5;
+          datasets = [
+            {
+              type: "line",
+              label: `구간 평균 (${sexLabel} · ${metricLabel})`,
+              data: buckets.map(b => b.avg),
+              borderColor: "#1D4ED8",
+              backgroundColor: "rgba(37, 99, 235, 0.12)",
+              fill: true,
+              borderWidth: 2.6,
+              pointRadius: ptR,
+              tension: 0.28
+            },
+            {
+              type: "line",
+              label: "구간 내 최고가",
+              data: buckets.map(b => b.max),
+              borderColor: "rgba(220, 38, 38, 0.75)",
+              borderDash: [4, 4],
+              borderWidth: 1.5,
+              pointRadius: 0,
+              tension: 0.25
+            },
+            {
+              type: "line",
+              label: "구간 내 최저가",
+              data: buckets.map(b => b.min),
+              borderColor: "rgba(5, 150, 105, 0.75)",
+              borderDash: [4, 4],
+              borderWidth: 1.5,
+              pointRadius: 0,
+              tension: 0.25
+            }
+          ];
+        }
+
+        STATE.charts.carcassTrend = new Chart(ctx, {
+          type: (gran === "YEAR" && metric !== "ALL_GRADES" && sex !== "COMPARE_SEX") ? "bar" : "line",
+          data: { labels, datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+              legend: {
+                position: "top",
+                labels: { font: { family: "Pretendard", size: 11, weight: "bold" }, boxWidth: 12 }
+              },
+              tooltip: {
+                callbacks: {
+                  label: c => `${c.dataset.label}: ${fmtNum(c.parsed.y)}원/kg`
+                }
+              }
+            },
+            scales: {
+              x: {
+                ticks: {
+                  maxRotation: 45,
+                  autoSkip: true,
+                  maxTicksLimit: gran === "DAY" ? 14 : (gran === "WEEK" ? 16 : 24),
+                  font: { size: 10, weight: "600" }
+                },
+                grid: { display: false }
+              },
+              y: {
+                ticks: {
+                  callback: v => `${fmtNum(v)}원`,
+                  font: { size: 11 }
+                },
+                grid: { color: "#F1F5F9" }
+              }
+            }
+          }
+        });
+      }
+
+      const orderMode = document.getElementById("carcassTableOrder")?.value || "DESC";
+      const displayBuckets = orderMode === "DESC" ? buckets.slice().reverse() : buckets.slice();
+
+      const tblTitleEl = document.getElementById("carcassCellTableTitle");
+      const cntBadgeEl = document.getElementById("carcassPeriodRowCountBadge");
+      if (tblTitleEl) {
+        tblTitleEl.textContent = `📊 ${granLabel} 한우 지육시세 상세 비교 시트 [${sexLabel} · ${metricLabel}]`;
+      }
+      if (cntBadgeEl) {
+        cntBadgeEl.textContent = `총 ${fmtNum(displayBuckets.length)}개 구간`;
+      }
+
+      const globalMin = Math.min(...buckets.map(b => b.min > 0 ? b.min : b.avg));
+      const globalMax = Math.max(...buckets.map(b => b.max > 0 ? b.max : b.avg));
+      const globalSpan = Math.max(globalMax - globalMin, 1);
+      const maxAbsDiff = Math.max(...buckets.map(b => Math.abs(b.prevDiff || 0)), 100);
+
+      const cellBody = document.getElementById("carcassCellChartBody");
+      if (cellBody) {
+        cellBody.innerHTML = displayBuckets.map(b => {
+          const avgPosPct = Math.min(100, Math.max(4, Math.round(((b.avg - globalMin) / globalSpan) * 100)));
+          const minPosPct = Math.min(100, Math.max(0, Math.round(((b.min - globalMin) / globalSpan) * 100)));
+          const rangeWidthPct = Math.min(100 - minPosPct, Math.max(3, Math.round(((b.max - b.min) / globalSpan) * 100)));
+
+          let barColor = "#2563EB";
+          if (avgPosPct >= 75) barColor = "#DC2626";
+          else if (avgPosPct >= 50) barColor = "#D97706";
+          else if (avgPosPct <= 25) barColor = "#059669";
+
+          const diff = b.prevDiff || 0;
+          const halfBarPct = Math.min(50, Math.round((Math.abs(diff) / maxAbsDiff) * 50));
+          const diffTxt = diff > 0
+            ? `<span class="text-red-600 font-extrabold">▲ +${fmtNum(diff)}원 (+${b.prevPct}%)</span>`
+            : (diff < 0
+              ? `<span class="text-blue-600 font-extrabold">▼ ${fmtNum(diff)}원 (${b.prevPct}%)</span>`
+              : `<span class="text-slate-400 font-semibold">보합 (0원)</span>`);
+
+          const biBarHtml = `
+            <div class="relative w-full h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/80 mt-1">
+              <div class="absolute left-1/2 top-0 bottom-0 w-px bg-slate-400"></div>
+              ${diff > 0
+                ? `<div style="left:50%; width:${halfBarPct}%;" class="absolute top-0 bottom-0 bg-red-500 rounded-r-full"></div>`
+                : (diff < 0
+                  ? `<div style="left:${50 - halfBarPct}%; width:${halfBarPct}%;" class="absolute top-0 bottom-0 bg-blue-500 rounded-l-full"></div>`
+                  : "")}
+            </div>
+          `;
+
+          const subPeriod = (gran === "WEEK" || gran === "YEAR")
+            ? `<div class="text-[10px] text-slate-400 font-medium num-tab">${b.startDate} ~ ${b.endDate}</div>`
+            : "";
+
+          const sexGap = (b.steerAvg > 0 && b.cowAvg > 0) ? (b.steerAvg - b.cowAvg) : 0;
+
+          return `
+            <tr class="hover:bg-blue-50/40">
+              <td class="py-2.5 px-3 font-extrabold text-slate-900 num-tab whitespace-nowrap">
+                <div>${b.label}</div>
+                ${subPeriod}
+              </td>
+              <td class="py-2.5 px-3 text-right font-extrabold text-slate-900 num-tab whitespace-nowrap">
+                <span class="text-sm">${fmtNum(b.avg)}</span><span class="text-[11px] text-slate-500 ml-0.5">원/kg</span>
+              </td>
+              <td class="py-2.5 px-3 align-middle">
+                <div class="flex items-center justify-between text-[10px] text-slate-500 num-tab mb-1">
+                  <span>시세수준 ${avgPosPct}%</span>
+                  <span>평균 대비 ${b.avg >= periodAvg ? "+" : ""}${fmtNum(b.avg - periodAvg)}원</span>
+                </div>
+                <div class="relative w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/80">
+                  ${gran !== "DAY" ? `<div style="left:${minPosPct}%; width:${rangeWidthPct}%;" class="absolute top-0 bottom-0 bg-slate-300/80 rounded-full" title="구간 최저~최고 범위"></div>` : ""}
+                  <div style="width:${avgPosPct}%; background:${barColor};" class="relative h-full rounded-full opacity-90"></div>
+                </div>
+              </td>
+              <td class="py-2.5 px-3 align-middle num-tab whitespace-nowrap">
+                <div class="text-[11px] text-right">${diffTxt}</div>
+                ${biBarHtml}
+              </td>
+              <td class="py-2.5 px-3 text-right num-tab whitespace-nowrap text-[11px]">
+                <span class="text-emerald-700 font-bold">${fmtNum(b.min)}</span>
+                <span class="text-slate-400 mx-0.5">~</span>
+                <span class="text-red-700 font-bold">${fmtNum(b.max)}원</span>
+              </td>
+              <td class="py-2.5 px-3 text-right num-tab whitespace-nowrap text-[11px]">
+                <span class="text-red-700 font-bold">${fmtNum(b.steerAvg)}</span> /
+                <span class="text-blue-700 font-bold">${fmtNum(b.cowAvg)}</span>
+                <span class="text-slate-500 text-[10px]">(${sexGap >= 0 ? "+" : ""}${fmtNum(sexGap)})</span>
+              </td>
+              <td class="py-2.5 px-3 text-right num-tab whitespace-nowrap text-[11px]">
+                <span class="text-red-700 font-bold">${b.g1ppAvg ? fmtNum(b.g1ppAvg) : "-"}</span> /
+                <span class="text-amber-700 font-bold">${b.g1pAvg ? fmtNum(b.g1pAvg) : "-"}</span> /
+                <span class="text-blue-700 font-bold">${b.g1Avg ? fmtNum(b.g1Avg) : "-"}</span> /
+                <span class="text-emerald-700 font-semibold">${b.g2Avg ? fmtNum(b.g2Avg) : "-"}</span> /
+                <span class="text-slate-500">${b.g3Avg ? fmtNum(b.g3Avg) : "-"}</span>
+              </td>
+              <td class="py-2.5 px-3 text-center num-tab font-bold text-slate-700">${fmtNum(b.days)}일</td>
+            </tr>
+          `;
+        }).join("");
+      }
+
+      const mobContainer = document.getElementById("carcassMobileCellCards");
+      if (mobContainer) {
+        const mobSlice = displayBuckets.slice(0, 60);
+        mobContainer.innerHTML = mobSlice.map(b => {
+          const avgPosPct = Math.min(100, Math.max(5, Math.round(((b.avg - globalMin) / globalSpan) * 100)));
+          const diff = b.prevDiff || 0;
+          const diffBadge = diff > 0
+            ? `<span class="text-red-600 font-extrabold text-xs num-tab">▲ +${fmtNum(diff)}원 (${b.prevPct}%)</span>`
+            : (diff < 0
+              ? `<span class="text-blue-600 font-extrabold text-xs num-tab">▼ ${fmtNum(diff)}원 (${b.prevPct}%)</span>`
+              : `<span class="text-slate-400 text-xs num-tab">보합</span>`);
+          return `
+            <div class="p-3 rounded-xl border border-slate-200 bg-white space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="font-extrabold text-slate-900 text-xs num-tab">${b.label} (${b.days}일)</span>
+                ${diffBadge}
+              </div>
+              <div class="flex items-baseline justify-between">
+                <span class="text-base font-extrabold text-navy-900 num-tab">${fmtNum(b.avg)}원/kg</span>
+                <span class="text-[11px] text-slate-500 num-tab">최저 ${fmtNum(b.min)} ~ 최고 ${fmtNum(b.max)}원</span>
+              </div>
+              <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div style="width:${avgPosPct}%;" class="h-full bg-blue-600 rounded-full"></div>
+              </div>
+              <div class="flex items-center justify-between text-[11px] text-slate-600 num-tab pt-0.5">
+                <span>🐂거세 ${fmtNum(b.steerAvg)} / 🐄암소 ${fmtNum(b.cowAvg)}</span>
+                <span>1++ ${fmtNum(b.g1ppAvg)} · 1+ ${fmtNum(b.g1pAvg)} · 1 ${fmtNum(b.g1Avg)}</span>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+    }
+
     function renderEkapeSection() {
+      renderCarcassSiseSection();
       const snap = ARCHIVE.snapshots[STATE.currentSnapIdx];
       const ekCattle = document.getElementById("ekapeCattleFilter")?.value || "ALL";
       const ekGrade = document.getElementById("ekapeGradeFilter")?.value || "전국평균";
