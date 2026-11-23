@@ -456,12 +456,30 @@
               <option value="ALL">전체 중분류 (49종)</option>
             </select>
           </div>
+          <span class="text-slate-300 shrink-0">|</span>
+
+          <!-- ⑥ 부위·초성 빠른 검색 (초성 입력 시 연관 단어 드롭다운 & 칩 필터링) -->
+          <div class="relative flex items-center gap-1 shrink-0" id="topPartSearchWrap">
+            <label for="topPartSearchInput" class="text-[11px] font-extrabold text-indigo-800">🔎 부위·초성 검색:</label>
+            <div class="relative">
+              <input id="topPartSearchInput" type="text" autocomplete="off"
+                placeholder="초성/부위명 (예: ㄷㅅ, ㄱㅂ, ㅇㅅ, 차돌...)"
+                oninput="onPartSearchInput('top', this.value)"
+                onfocus="onPartSearchInput('top', this.value)"
+                onkeydown="onPartSearchKeydown(event, 'top')"
+                class="w-48 sm:w-56 rounded-lg border border-indigo-300 bg-indigo-50/40 px-2.5 py-0.5 pr-6 text-xs font-extrabold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white" />
+              <button type="button" id="topPartSearchClearBtn" onclick="clearPartSearch('top')"
+                class="hidden absolute right-1.5 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 hover:text-slate-700 font-bold">✕</button>
+              <div id="topPartSuggestPopup"
+                class="hidden absolute left-0 top-full mt-1 w-72 sm:w-80 max-h-72 overflow-y-auto bg-white rounded-xl shadow-2xl border border-indigo-200 z-50 p-1.5 text-xs"></div>
+            </div>
+          </div>
         </div>
 
         <!-- [요청사항 반영] 상단 부위 탭이 가로 스크롤 없이 한눈에 모두 보이도록 flex-wrap 구성 + 중복 선택(최대 5개) 안내 -->
-        <div class="flex flex-wrap items-center gap-1 pt-0.5">
+        <div class="flex flex-wrap items-center gap-1 pt-0.5" id="quickPartChipSection">
           <span class="text-[11px] font-extrabold text-slate-600 mr-1 flex items-center gap-1">
-            <span>🎯 부위 탭 (클릭 시 상단 4개 카테고리·차트 즉시 반응 / 전상품 탭에서 최대 5개 중복선택):</span>
+            <span>🎯 부위 탭 (클릭 시 상단 4개 카테고리·차트 즉시 반응 / 초성 검색 연동 / 전상품 탭 최대 5개 중복선택):</span>
           </span>
           <div id="quickPartChipBar" class="flex flex-wrap items-center gap-1"></div>
         </div>
@@ -981,7 +999,44 @@
         <!-- ===================================================================== -->
         <section id="view-3" class="hidden space-y-6">
 
-          <!-- 생산일자 신선도 구간별 요약 카드 4열 (부위 탭 적용 시 실시간 반응!) -->
+          <!-- [요청사항 반영] 3번 생산일자 최저·최고가 분석 전용 냉장/냉동 구분 필터 & 부위·초성 검색 컨트롤 바 -->
+          <div class="bg-white rounded-2xl border border-indigo-200 shadow-xs p-3.5 lg:p-4 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="px-2.5 py-1 rounded-lg bg-navy-900 text-white text-xs font-extrabold flex items-center gap-1">
+                <span>📅 3. 생산일자별 최저·최고가 정밀 분석</span>
+              </span>
+              <span class="text-xs text-slate-600 font-semibold">
+                최저기준 상품(🔗)과 최고기준 상품(🔗)을 1:1 정밀 매핑하며, <strong>냉장 / 냉동 구분 필터</strong>로 구간별 시세를 즉시 분리 조회합니다.
+              </span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2.5">
+              <!-- 냉장 / 냉동 구분 필터 버튼 그룹 -->
+              <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200" id="view3KeepingFilterBar">
+                <span class="text-[11px] font-extrabold text-slate-700 px-1.5">보관상태 구분:</span>
+                <button type="button" onclick="setView3Keeping('ALL')" data-v3keep="ALL"
+                  class="v3keep-btn px-3 py-1 rounded-lg bg-navy-900 text-white text-xs font-extrabold shadow-2xs">전체 (💧냉장+❄️냉동)</button>
+                <button type="button" onclick="setView3Keeping('냉장')" data-v3keep="냉장"
+                  class="v3keep-btn px-3 py-1 rounded-lg bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-bold">💧 냉장 전용</button>
+                <button type="button" onclick="setView3Keeping('냉동')" data-v3keep="냉동"
+                  class="v3keep-btn px-3 py-1 rounded-lg bg-white hover:bg-blue-50 text-blue-800 border border-blue-300 text-xs font-bold">❄️ 냉동 전용</button>
+              </div>
+              <!-- 3번 뷰 전용 부위·초성 빠른 검색 -->
+              <div class="relative" id="view3PartSearchWrap">
+                <input id="view3PartSearchInput" type="text" autocomplete="off"
+                  placeholder="🔎 부위·초성 검색 (예: ㄷㅅ, ㄱㅂ, 안심...)"
+                  oninput="onPartSearchInput('view3', this.value)"
+                  onfocus="onPartSearchInput('view3', this.value)"
+                  onkeydown="onPartSearchKeydown(event, 'view3')"
+                  class="w-48 sm:w-56 rounded-lg border border-indigo-300 bg-indigo-50/40 px-2.5 py-1 pr-6 text-xs font-extrabold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white" />
+                <button type="button" id="view3PartSearchClearBtn" onclick="clearPartSearch('view3')"
+                  class="hidden absolute right-1.5 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 hover:text-slate-700 font-bold">✕</button>
+                <div id="view3PartSuggestPopup"
+                  class="hidden absolute right-0 top-full mt-1 w-72 sm:w-80 max-h-72 overflow-y-auto bg-white rounded-xl shadow-2xl border border-indigo-200 z-50 p-1.5 text-xs"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 생산일자 신선도 구간별 요약 카드 4열 (부위 탭 & 냉장/냉동 필터 적용 시 실시간 반응!) -->
           <div id="prodBucketSummaryCards" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5"></div>
 
           <!-- 노후 재고 덤핑 착시 경보 & 생산일자 구간별 차트 -->
@@ -1083,11 +1138,25 @@
               </div>
             </div>
 
-            <!-- [요청사항 반영] 중복 탭 설정 (최대 5개 중분류 부위 동시 선택 바 - 줄바꿈으로 한눈에 전체 노출) -->
-            <div class="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-extrabold text-blue-800">📌 중복 탭 설정 (최대 5개 부위 동시 선택 가능 — 클릭 시 아래 2개 카테고리 차트 및 상품 리스트 동시 반응):</span>
-                <span id="multiPartCountBadge" class="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[11px] font-extrabold">선택 3 / 5개</span>
+            <!-- [요청사항 반영] 중복 탭 설정 (최대 5개 중분류 부위 동시 선택 바 - 줄바꿈으로 한눈에 전체 노출 + 초성 검색 연동) -->
+            <div class="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <span class="text-xs font-extrabold text-blue-800">📌 중복 탭 설정 (최대 5개 부위 동시 선택 가능 — 초성 검색 또는 칩 클릭 시 아래 2개 카테고리 차트 및 상품 리스트 동시 반응):</span>
+                <div class="flex items-center gap-2">
+                  <div class="relative" id="view4PartSearchWrap">
+                    <input id="view4PartSearchInput" type="text" autocomplete="off"
+                      placeholder="🔎 부위·초성 검색 후 추가 (예: ㄷㅅ, ㄱㅂ, ㅇㅅ...)"
+                      oninput="onPartSearchInput('view4', this.value)"
+                      onfocus="onPartSearchInput('view4', this.value)"
+                      onkeydown="onPartSearchKeydown(event, 'view4')"
+                      class="w-56 sm:w-64 rounded-lg border border-blue-300 bg-white px-2.5 py-1 pr-6 text-xs font-extrabold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600" />
+                    <button type="button" id="view4PartSearchClearBtn" onclick="clearPartSearch('view4')"
+                      class="hidden absolute right-1.5 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 hover:text-slate-700 font-bold">✕</button>
+                    <div id="view4PartSuggestPopup"
+                      class="hidden absolute right-0 top-full mt-1 w-72 sm:w-80 max-h-72 overflow-y-auto bg-white rounded-xl shadow-2xl border border-blue-200 z-50 p-1.5 text-xs"></div>
+                  </div>
+                  <span id="multiPartCountBadge" class="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[11px] font-extrabold">선택 3 / 5개</span>
+                </div>
               </div>
               <div id="multiPartSelectBar" class="flex flex-wrap items-center gap-1.5"></div>
             </div>
@@ -1209,9 +1278,16 @@
                 </select>
               </div>
               <div>
-                <label class="block text-[11px] font-bold text-slate-500 mb-1">⑧ 브랜드 / 품목 검색</label>
-                <input id="fltKeyword" type="text" oninput="applyProductFilters()" placeholder="브랜드·품목·생산일 검색..."
-                  class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-blue-500" />
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">⑧ 브랜드 / 부위(초성) 검색</label>
+                <div class="relative" id="fltKeywordWrap">
+                  <input id="fltKeyword" type="text" autocomplete="off"
+                    oninput="onFltKeywordInput(this.value)"
+                    onfocus="onFltKeywordInput(this.value)"
+                    placeholder="초성(ㄷㅅ,ㄱㅂ)·부위·브랜드 검색..."
+                    class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-blue-500" />
+                  <div id="fltKeywordSuggestPopup"
+                    class="hidden absolute left-0 top-full mt-1 w-64 max-h-60 overflow-y-auto bg-white rounded-xl shadow-2xl border border-blue-200 z-50 p-1.5 text-xs"></div>
+                </div>
               </div>
             </div>
 
@@ -1401,6 +1477,8 @@
       part: "ALL",
       briefingKeeping: "ALL",    // 실시간 문제해결 브리핑 전용 냉장/냉동 구분필터
       scoreboardKeeping: "ALL",  // 비교군 수집-재고-최저가 우위현황 전용 냉장/냉동 구분필터
+      view3Keeping: "ALL",       // 3번 생산일자별 최저·최고가 분석 전용 냉장/냉동 구분필터
+      partSearchQuery: "",       // 부위·초성 검색 입력어
       multiParts: ["등심", "안심", "채끝"], // 전상품 필터 중복 탭 설정 (최대 5개)
       trackedKeys: new Set(JSON.parse(localStorage.getItem("hanwoo_tracked_keys_v1") || "[]")),
       sidebarCollapsed: false,
@@ -1447,6 +1525,194 @@
       g3: "3등급 지육 경락단가",
       ALL_GRADES: "📊 전 등급 동시비교 (평균·1++·1+·1·2·3)"
     };
+
+    // ===================== [요청사항 반영] 한글 초성(Chosung) 추출 & 한우 부위별 연관 단어 사전 =====================
+    const CHOSUNG_LIST = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
+    const DOUBLE_CHOSUNG_NORM = { "ㄲ": "ㄱ", "ㄸ": "ㄷ", "ㅃ": "ㅂ", "ㅆ": "ㅅ", "ㅉ": "ㅈ" };
+
+    // 한우 표준 부위별 연관 단어·동의어·대분류 매핑 사전 (초성 및 연관어 검색 시 활용)
+    const PART_ASSOCIATED_DICT = {
+      "등심": ["등심", "일반등심", "통등심", "윗등심", "아랫등심", "알등심", "상등심", "하등심", "살치살", "꽃등심", "로스", "구이용"],
+      "알등심": ["알등심", "등심", "알맹이등심", "꽃등심", "구이용"],
+      "윗등심": ["윗등심", "상등심", "등심", "살치살"],
+      "아랫등심": ["아랫등심", "하등심", "등심", "꽃등심"],
+      "살치살": ["살치살", "살치", "등심", "윗등심", "특수부위", "마블링"],
+      "안심": ["안심", "안심살", "추리", "샤토브리앙", "텐더로인", "스테이크", "구이용"],
+      "채끝": ["채끝", "채끝살", "채끝등심", "스트립로인", "뉴욕스트립", "스테이크", "구이용"],
+      "갈비": ["갈비", "통갈비", "본갈비", "꽃갈비", "참갈비", "짝갈비", "갈비살", "늑간살", "마구리", "갈비탕", "찜갈비"],
+      "갈비살": ["갈비살", "갈빗살", "늑간살", "근막갈비", "갈비", "구이용"],
+      "꽃갈비": ["꽃갈비", "꽃갈비살", "갈비", "LA갈비", "구이갈비"],
+      "본갈비": ["본갈비", "갈비", "찜갈비", "LA갈비"],
+      "참갈비": ["참갈비", "갈비", "본갈비", "꽃갈비"],
+      "짝갈비": ["짝갈비", "통갈비", "갈비"],
+      "마구리": ["마구리", "갈비마구리", "갈비탕", "갈비"],
+      "안창살": ["안창살", "안창", "특수부위", "내장육", "갈비", "구이용"],
+      "토시살": ["토시살", "토시", "특수부위", "주먹시", "안거미", "구이용"],
+      "제비추리": ["제비추리", "제비", "특수부위", "갈비", "구이용"],
+      "양지": ["양지", "통양지", "양지머리", "차돌양지", "업진양지", "치마양지", "차돌박이", "업진살", "치마살", "국거리", "수육"],
+      "양지머리": ["양지머리", "양지", "앞양지", "국거리", "수육"],
+      "차돌박이": ["차돌박이", "차돌", "차돌양지", "알차돌", "양지", "구이용"],
+      "업진살": ["업진살", "업진", "업진양지", "업진안살", "양지", "특수부위", "구이용"],
+      "업진안살": ["업진안살", "업진살", "양지", "특수부위"],
+      "치마살": ["치마살", "치마", "치마양지", "앞치마살", "양지", "특수부위", "구이용"],
+      "치마양지": ["치마양지", "치마살", "양지", "국거리"],
+      "앞치마살": ["앞치마살", "치마살", "양지", "특수부위"],
+      "삼각살": ["삼각살", "삼각갈비", "설도", "보섭살", "구이용"],
+      "설도": ["설도", "설깃살", "설깃머리", "보섭살", "도가니살", "삼각살", "불고기", "육회", "산적"],
+      "설깃살": ["설깃살", "설깃", "설깃머리", "설도", "불고기", "산적"],
+      "설깃머리": ["설깃머리", "설깃살", "설도", "구이용"],
+      "보섭살": ["보섭살", "보섭", "설도", "스테이크", "육회"],
+      "도가니살": ["도가니살", "도가니", "설도", "불고기", "육회"],
+      "사태": ["사태", "아롱사태", "앞사태", "뒷사태", "뭉치사태", "상박살", "국거리", "장조림", "수육", "육회"],
+      "아롱사태": ["아롱사태", "아롱", "사태", "수육", "육회", "특수부위"],
+      "앞사태": ["앞사태", "사태", "국거리", "장조림"],
+      "뒷사태": ["뒷사태", "사태", "국거리", "육회"],
+      "뭉치사태": ["뭉치사태", "사태", "뒷사태", "육회"],
+      "우둔": ["우둔", "우둔살", "홍두깨살", "홍두깨", "뭉티기", "육회", "육사시미", "불고기", "장조림"],
+      "우둔살": ["우둔살", "우둔", "뭉티기", "육회", "육사시미", "불고기"],
+      "홍두깨살": ["홍두깨살", "홍두깨", "우둔", "장조림", "육포", "산적"],
+      "앞다리": ["앞다리", "앞다리살", "부채살", "부채덮개살", "꾸리살", "갈비덧살", "불고기", "국거리"],
+      "앞다리살": ["앞다리살", "앞다리", "불고기", "국거리"],
+      "부채살": ["부채살", "부채", "낙엽살", "앞다리", "특수부위", "구이용"],
+      "부채덮개살": ["부채덮개살", "부채살", "앞다리"],
+      "꾸리살": ["꾸리살", "꾸리", "앞다리", "육회", "불고기"],
+      "갈비덧살": ["갈비덧살", "덧살", "앞다리", "갈비"],
+      "목심": ["목심", "목살", "불고기", "국거리"],
+      "사골": ["사골", "우족", "꼬리", "잡뼈", "도가니", "곰탕"],
+      "꼬리": ["꼬리", "소꼬리", "꼬리반골", "사골"],
+      "우설": ["우설", "소혀", "특수부위"]
+    };
+
+    function extractChosung(str) {
+      let res = "";
+      const s = String(str || "");
+      for (let i = 0; i < s.length; i++) {
+        const code = s.charCodeAt(i) - 0xAC00;
+        if (code >= 0 && code < 11172) {
+          res += CHOSUNG_LIST[Math.floor(code / 588)];
+        } else {
+          res += s[i];
+        }
+      }
+      return res;
+    }
+
+    function normalizeSingleChosung(str) {
+      return String(str || "").split("").map(ch => DOUBLE_CHOSUNG_NORM[ch] || ch).join("");
+    }
+
+    function isChosungOnlyQuery(q) {
+      const t = String(q || "").replace(/\s+/g, "");
+      if (!t) return false;
+      return /^[ㄱ-ㅎ]+$/.test(t);
+    }
+
+    function getPartMajorMap() {
+      const snap = ARCHIVE.snapshots[STATE.currentSnapIdx] || ARCHIVE.snapshots[0];
+      const map = {};
+      if (snap && Array.isArray(snap.full_items)) {
+        snap.full_items.forEach(it => {
+          if (it.part && it.major && !map[it.part]) map[it.part] = it.major;
+        });
+      }
+      return map;
+    }
+
+    function getAllAvailableParts(respectMajor = false) {
+      const snap = ARCHIVE.snapshots[STATE.currentSnapIdx] || ARCHIVE.snapshots[0];
+      if (!snap || !Array.isArray(snap.full_items)) return [];
+      const items = (respectMajor && STATE.major !== "ALL")
+        ? snap.full_items.filter(x => x.major === STATE.major)
+        : snap.full_items;
+      return Array.from(new Set(items.map(x => x.part).filter(Boolean)));
+    }
+
+    // 부위명 + 대분류 + 연관단어 사전 기반 초성/키워드 정밀 매칭 및 점수화
+    function getPartSearchMatches(query, candidateParts = null) {
+      const qRaw = String(query || "").trim();
+      const parts = candidateParts || getAllAvailableParts(false);
+      const majorMap = getPartMajorMap();
+      if (!qRaw) {
+        return parts.map(p => ({
+          part: p,
+          major: majorMap[p] || "한우원물",
+          chosung: extractChosung(p),
+          reason: (PART_ASSOCIATED_DICT[p] || []).slice(1, 4).join(", ") || `${majorMap[p] || "원물"} 부위`,
+          score: 1
+        }));
+      }
+      const q = qRaw.replace(/\s+/g, "").toLowerCase();
+      const qNorm = normalizeSingleChosung(q);
+      const results = [];
+
+      parts.forEach(p => {
+        const major = majorMap[p] || "";
+        const pLower = p.toLowerCase();
+        const pCho = extractChosung(p);
+        const pChoNorm = normalizeSingleChosung(pCho);
+        const mCho = extractChosung(major);
+        const mChoNorm = normalizeSingleChosung(mCho);
+        const assocList = PART_ASSOCIATED_DICT[p] || [p];
+
+        let score = 0;
+        let matchedTerms = [];
+
+        if (pLower === q) {
+          score = 100;
+          matchedTerms.push("정확일치");
+        } else if (pLower.startsWith(q)) {
+          score = 92;
+          matchedTerms.push("앞글자 일치");
+        } else if (pLower.includes(q)) {
+          score = 85;
+          matchedTerms.push("부위명 포함");
+        } else if (pCho === q || pChoNorm === qNorm) {
+          score = 90;
+          matchedTerms.push(`초성 일치(${pCho})`);
+        } else if (pCho.startsWith(q) || pChoNorm.startsWith(qNorm)) {
+          score = 82;
+          matchedTerms.push(`초성 시작(${pCho})`);
+        } else if (pCho.includes(q) || pChoNorm.includes(qNorm)) {
+          score = 74;
+          matchedTerms.push(`초성 포함(${pCho})`);
+        }
+
+        // 대분류(등심/갈비/양지/설도/사태/우둔/앞다리 등) 매칭 시 연관 하위 부위 함께 노출
+        if (major) {
+          const mLower = major.toLowerCase();
+          if (mLower.includes(q) || mCho.includes(q) || mChoNorm.includes(qNorm)) {
+            score = Math.max(score, 68);
+            matchedTerms.push(`대분류 [${major}] 연관부위`);
+          }
+        }
+
+        // 연관 단어·동의어 매칭
+        assocList.forEach(term => {
+          if (term === p) return;
+          const tLower = term.toLowerCase();
+          const tCho = extractChosung(term);
+          const tChoNorm = normalizeSingleChosung(tCho);
+          if (tLower.includes(q) || tCho.includes(q) || tChoNorm.includes(qNorm)) {
+            score = Math.max(score, 64);
+            if (!matchedTerms.includes(term)) matchedTerms.push(term);
+          }
+        });
+
+        if (score > 0) {
+          const extraAssoc = assocList.filter(t => t !== p).slice(0, 4).join(" · ");
+          results.push({
+            part: p,
+            major: major || "한우원물",
+            chosung: pCho,
+            reason: matchedTerms.slice(0, 2).join(" / ") + (extraAssoc ? ` (연관: ${extraAssoc})` : ""),
+            score
+          });
+        }
+      });
+
+      results.sort((a, b) => b.score - a.score || a.part.localeCompare(b.part, "ko"));
+      return results;
+    }
 
     // [요청사항 반영] 품절/주의품목 기준: 냉장 재고 5개 미만 / 냉동 재고 10개 미만
     function getLowStockThreshold(keeping) {
@@ -1633,9 +1899,10 @@
         else STATE.carcass.metric = "avg";
       }
       if (field === "keeping") {
-        // 상단 글로벌 보관상태를 변경하면 브리핑/스코어보드 보관상태도 함께 동기화
+        // 상단 글로벌 보관상태를 변경하면 브리핑/스코어보드/3번뷰 보관상태도 함께 동기화
         STATE.briefingKeeping = STATE.keeping;
         STATE.scoreboardKeeping = STATE.keeping;
+        STATE.view3Keeping = STATE.keeping;
       }
       if (field === "major") {
         STATE.part = "ALL";
@@ -1727,6 +1994,293 @@
       );
     }
 
+    // [요청사항 반영] 3번 생산일자별 최저·최고가 분석 전용 냉장/냉동 구분필터 관리
+    function syncView3KeepingUI() {
+      const effKeep = STATE.view3Keeping !== "ALL" ? STATE.view3Keeping : STATE.keeping;
+      document.querySelectorAll(".v3keep-btn").forEach(btn => {
+        const k = btn.getAttribute("data-v3keep");
+        const act = k === effKeep;
+        if (act) {
+          btn.className = k === "냉장"
+            ? "v3keep-btn px-3 py-1 rounded-lg bg-emerald-600 text-white text-xs font-extrabold shadow-2xs"
+            : (k === "냉동"
+              ? "v3keep-btn px-3 py-1 rounded-lg bg-blue-600 text-white text-xs font-extrabold shadow-2xs"
+              : "v3keep-btn px-3 py-1 rounded-lg bg-navy-900 text-white text-xs font-extrabold shadow-2xs");
+        } else {
+          btn.className = k === "냉장"
+            ? "v3keep-btn px-3 py-1 rounded-lg bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-bold"
+            : (k === "냉동"
+              ? "v3keep-btn px-3 py-1 rounded-lg bg-white hover:bg-blue-50 text-blue-800 border border-blue-300 text-xs font-bold"
+              : "v3keep-btn px-3 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold");
+        }
+      });
+    }
+
+    function setView3Keeping(val) {
+      STATE.view3Keeping = val || "ALL";
+      // 상단 글로벌 보관상태가 특정 값(냉장/냉동)으로 묶여 있을 때 3번 뷰에서 다른 값이나 전체를 누르면 상단도 유연하게 맞춰줌
+      if (val === "ALL" && STATE.keeping !== "ALL") {
+        STATE.keeping = "ALL";
+        syncFilterControlsUI();
+      }
+      syncView3KeepingUI();
+      renderView3ProductionDate();
+      showToast(
+        val === "ALL"
+          ? "3번 생산일자 분석: 전체(💧냉장 + ❄️냉동) 기준으로 최저·최고가 상품을 표시합니다."
+          : `3번 생산일자 분석: [${val === "냉장" ? "💧 냉장" : "❄️ 냉동"}] 전용 최저·최고가 및 생산일자 구간으로 전환되었습니다.`,
+        val === "냉동" ? "❄️" : (val === "냉장" ? "💧" : "📅")
+      );
+    }
+
+    // ===================== [요청사항 반영] 부위·초성 검색 입력 및 연관 단어 자동완성 제어 =====================
+    function syncPartSearchInputs(query, sourceScope = null) {
+      STATE.partSearchQuery = String(query || "");
+      const scopes = [
+        { key: "top", inputId: "topPartSearchInput", clearId: "topPartSearchClearBtn" },
+        { key: "view3", inputId: "view3PartSearchInput", clearId: "view3PartSearchClearBtn" },
+        { key: "view4", inputId: "view4PartSearchInput", clearId: "view4PartSearchClearBtn" }
+      ];
+      scopes.forEach(sc => {
+        const inp = document.getElementById(sc.inputId);
+        if (inp && sc.key !== sourceScope) inp.value = STATE.partSearchQuery;
+        const clr = document.getElementById(sc.clearId);
+        if (clr) clr.classList.toggle("hidden", !STATE.partSearchQuery.trim());
+      });
+    }
+
+    function hideAllPartSuggestPopups() {
+      ["topPartSuggestPopup", "view3PartSuggestPopup", "view4PartSuggestPopup", "fltKeywordSuggestPopup"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add("hidden");
+      });
+    }
+
+    function selectPartFromSearch(scope, partName) {
+      hideAllPartSuggestPopups();
+      if (!partName || partName === "ALL") {
+        STATE.part = "ALL";
+        syncPartSearchInputs("");
+        syncFilterControlsUI();
+        renderAll();
+        return;
+      }
+      // 만약 현재 대분류가 선택된 부위와 다르면 전체 대분류로 자동 해제하여 검색한 부위가 바로 보이도록 처리
+      const majorMap = getPartMajorMap();
+      if (STATE.major !== "ALL" && majorMap[partName] && majorMap[partName] !== STATE.major) {
+        STATE.major = "ALL";
+        populateDynamicFilterOptions();
+      }
+
+      if (scope === "view4" || STATE.currentView === 4) {
+        if (!STATE.multiParts.includes(partName)) {
+          if (STATE.multiParts.length >= 5) STATE.multiParts.shift();
+          STATE.multiParts.push(partName);
+        }
+        STATE.part = "ALL";
+        syncFilterControlsUI();
+        renderAll();
+        showToast(`[${partName}] 부위가 중복 탭(최대 5개)에 추가되어 차트와 목록이 갱신되었습니다.`, "🔎");
+      } else {
+        STATE.part = partName;
+        if (!STATE.multiParts.includes(partName)) {
+          if (STATE.multiParts.length >= 5) STATE.multiParts.shift();
+          STATE.multiParts.push(partName);
+        }
+        syncFilterControlsUI();
+        renderAll();
+        showToast(`[${partName}] 부위 검색 적용 → 전 카테고리 및 생산일자 최저·최고가 분석이 즉시 반영되었습니다.`, "🔎");
+      }
+    }
+
+    function selectAllMatchedPartsInView4(query) {
+      const matches = getPartSearchMatches(query, getAllAvailableParts(false));
+      if (!matches.length) return;
+      const top5 = matches.slice(0, 5).map(m => m.part);
+      STATE.multiParts = top5;
+      STATE.part = "ALL";
+      hideAllPartSuggestPopups();
+      syncFilterControlsUI();
+      renderAll();
+      showToast(`연관 부위 ${top5.length}종(${top5.join(", ")})이 중복 탭에 일괄 설정되었습니다.`, "🎯");
+    }
+
+    function renderPartSuggestPopup(scope, query) {
+      const popupId = scope === "top"
+        ? "topPartSuggestPopup"
+        : (scope === "view3" ? "view3PartSuggestPopup" : "view4PartSuggestPopup");
+      const popup = document.getElementById(popupId);
+      if (!popup) return;
+
+      const q = String(query || "").trim();
+      const allParts = getAllAvailableParts(false);
+      const matches = getPartSearchMatches(q, allParts);
+
+      if (!q) {
+        // 입력어가 비어 있을 때도 자주 찾는 초성 예시 안내 제공
+        const quickExamples = [
+          { cho: "ㄷㅅ", label: "ㄷㅅ (등심·알등심·윗등심)" },
+          { cho: "ㄱㅂ", label: "ㄱㅂ (갈비·갈비살·꽃갈비)" },
+          { cho: "ㅇㅅ", label: "ㅇㅅ (안심·업진살·앞사태)" },
+          { cho: "ㅊㄲ", label: "ㅊㄲ (채끝)" },
+          { cho: "ㅅㅊ", label: "ㅅㅊ (살치살)" },
+          { cho: "ㅊㄷ", label: "ㅊㄷ (차돌박이)" },
+          { cho: "ㅅㄷ", label: "ㅅㄷ (설도·설깃살·보섭살)" },
+          { cho: "ㅅㅌ", label: "ㅅㅌ (사태·아롱사태)" }
+        ];
+        popup.innerHTML = `
+          <div class="px-2 py-1 text-[11px] font-extrabold text-indigo-800 border-b border-slate-100 flex items-center justify-between">
+            <span>💡 초성 또는 부위명을 입력하세요 (연관부위 자동 추천)</span>
+            <button type="button" onclick="hideAllPartSuggestPopups()" class="text-slate-400 hover:text-slate-700">닫기</button>
+          </div>
+          <div class="p-1.5 flex flex-wrap gap-1">
+            ${quickExamples.map(ex => `
+              <button type="button" onclick="onPartSearchInput('${scope}', '${ex.cho}', true)"
+                class="px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 text-[11px] font-bold">
+                ${escapeHtml(ex.label)}
+              </button>
+            `).join("")}
+          </div>
+        `;
+        popup.classList.remove("hidden");
+        return;
+      }
+
+      if (matches.length === 0) {
+        popup.innerHTML = `
+          <div class="p-3 text-center text-slate-500 text-xs">
+            '<strong>${escapeHtml(q)}</strong>'와 일치하는 한우 부위가 없습니다.<br/>
+            <span class="text-[11px] text-slate-400">예: ㄷㅅ(등심), ㄱㅂ(갈비), ㅇㅅ(안심/업진살), ㅊㄷ(차돌박이)</span>
+          </div>
+        `;
+        popup.classList.remove("hidden");
+        return;
+      }
+
+      const isMulti = (scope === "view4" || STATE.currentView === 4);
+      const batchBtnHtml = (matches.length > 1)
+        ? `<button type="button" onclick="selectAllMatchedPartsInView4('${escapeHtml(q)}')"
+             class="w-full mb-1 px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-extrabold flex items-center justify-between">
+             <span>⚡ 연관 부위 상위 ${Math.min(5, matches.length)}종 중복탭 일괄 선택</span>
+             <span>(${escapeHtml(matches.slice(0, 5).map(m => m.part).join("·"))})</span>
+           </button>`
+        : "";
+
+      popup.innerHTML = `
+        <div class="px-2 py-1 text-[11px] font-extrabold text-indigo-800 border-b border-slate-100 flex items-center justify-between">
+          <span>🔎 '${escapeHtml(q)}' 연관 부위 추천 (${matches.length}종)</span>
+          <button type="button" onclick="clearPartSearch('${scope}')" class="text-[10px] text-slate-500 hover:text-red-600 font-bold">초기화</button>
+        </div>
+        <div class="p-1 space-y-1">
+          ${batchBtnHtml}
+          ${matches.slice(0, 18).map(m => {
+            const isSelected = isMulti ? STATE.multiParts.includes(m.part) : (STATE.part === m.part);
+            return `
+              <button type="button" onclick="selectPartFromSearch('${scope}', '${escapeHtml(m.part)}')"
+                class="w-full text-left px-2.5 py-1.5 rounded-lg transition flex items-center justify-between gap-2 ${isSelected ? "bg-indigo-600 text-white" : "hover:bg-indigo-50 text-slate-800"}">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-extrabold text-xs">${isSelected ? "✓ " : ""}${escapeHtml(m.part)}</span>
+                    <span class="px-1.5 py-0.2 rounded text-[10px] font-bold ${isSelected ? "bg-indigo-800 text-indigo-100" : "bg-slate-100 text-slate-600"}">[${escapeHtml(m.major)}] 초성:${escapeHtml(m.chosung)}</span>
+                  </div>
+                  <div class="text-[10px] truncate ${isSelected ? "text-indigo-100" : "text-slate-500"}">${escapeHtml(m.reason)}</div>
+                </div>
+                <span class="text-[10px] font-extrabold shrink-0 ${isSelected ? "text-amber-200" : "text-indigo-600"}">${isMulti ? (isSelected ? "선택됨" : "+중복탭") : "즉시적용 →"}</span>
+              </button>
+            `;
+          }).join("")}
+        </div>
+      `;
+      popup.classList.remove("hidden");
+    }
+
+    function onPartSearchInput(scope, val, forceUpdateInput = false) {
+      if (forceUpdateInput) {
+        const inpId = scope === "top" ? "topPartSearchInput" : (scope === "view3" ? "view3PartSearchInput" : "view4PartSearchInput");
+        const inp = document.getElementById(inpId);
+        if (inp) inp.value = val;
+      }
+      syncPartSearchInputs(val, forceUpdateInput ? null : scope);
+      renderPartSuggestPopup(scope, val);
+
+      const parts = getAllAvailableParts(true);
+      renderQuickPartChips(parts);
+      renderMultiPartSelectBar(parts);
+    }
+
+    function onPartSearchKeydown(e, scope) {
+      if (e.key === "Escape") {
+        hideAllPartSuggestPopups();
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const q = String(e.target.value || "").trim();
+        const matches = getPartSearchMatches(q, getAllAvailableParts(false));
+        if (matches.length > 0) {
+          selectPartFromSearch(scope, matches[0].part);
+        }
+      }
+    }
+
+    function clearPartSearch(scope) {
+      syncPartSearchInputs("");
+      hideAllPartSuggestPopups();
+      const parts = getAllAvailableParts(true);
+      renderQuickPartChips(parts);
+      renderMultiPartSelectBar(parts);
+    }
+
+    // View 4의 ⑧ 브랜드 / 부위(초성) 검색창에서도 초성 입력 시 연관 부위 팝업과 실시간 초성 필터링 지원
+    function onFltKeywordInput(val) {
+      const popup = document.getElementById("fltKeywordSuggestPopup");
+      const q = String(val || "").trim();
+      if (popup) {
+        if (!q) {
+          popup.classList.add("hidden");
+        } else {
+          const matches = getPartSearchMatches(q, getAllAvailableParts(false));
+          if (matches.length > 0) {
+            popup.innerHTML = `
+              <div class="px-2 py-1 text-[10px] font-extrabold text-blue-800 border-b border-slate-100">
+                🔎 '${escapeHtml(q)}' 연관 부위 (${matches.length}종) — 클릭 시 필터 적용
+              </div>
+              <div class="p-1 space-y-0.5">
+                ${matches.slice(0, 10).map(m => `
+                  <button type="button" onclick="applyFltKeywordSuggestion('${escapeHtml(m.part)}')"
+                    class="w-full text-left px-2 py-1 rounded hover:bg-blue-50 flex items-center justify-between text-xs">
+                    <span class="font-extrabold text-slate-900">${escapeHtml(m.part)} <span class="text-[10px] text-slate-500">(${escapeHtml(m.chosung)})</span></span>
+                    <span class="text-[10px] text-blue-600 font-bold">[${escapeHtml(m.major)}]</span>
+                  </button>
+                `).join("")}
+              </div>
+            `;
+            popup.classList.remove("hidden");
+          } else {
+            popup.classList.add("hidden");
+          }
+        }
+      }
+      applyProductFilters();
+    }
+
+    function applyFltKeywordSuggestion(partName) {
+      const el = document.getElementById("fltKeyword");
+      if (el) el.value = partName;
+      hideAllPartSuggestPopups();
+      applyProductFilters();
+    }
+
+    // 팝업 외부 클릭 시 자동 닫기
+    document.addEventListener("click", (ev) => {
+      const wraps = ["topPartSearchWrap", "view3PartSearchWrap", "view4PartSearchWrap", "fltKeywordWrap"];
+      const inside = wraps.some(id => {
+        const w = document.getElementById(id);
+        return w && w.contains(ev.target);
+      });
+      if (!inside) hideAllPartSuggestPopups();
+    });
+
     function resetQuickAndAllFilters() {
       STATE.cattle = "ALL";
       STATE.grade = "ALL";
@@ -1735,7 +2289,11 @@
       STATE.part = "ALL";
       STATE.briefingKeeping = "ALL";
       STATE.scoreboardKeeping = "ALL";
+      STATE.view3Keeping = "ALL";
+      STATE.partSearchQuery = "";
       STATE.multiParts = ["등심", "안심", "채끝"];
+      syncPartSearchInputs("");
+      hideAllPartSuggestPopups();
       const fPlat = document.getElementById("fltPlatform");
       if (fPlat) fPlat.value = "ALL";
       const fSt = document.getElementById("fltStatus");
@@ -1748,8 +2306,9 @@
       syncFilterControlsUI();
       setBriefingKeeping("ALL");
       setScoreboardKeeping("ALL");
+      syncView3KeepingUI();
       renderAll();
-      showToast("모든 필터 및 중복 탭 선택이 초기화되었습니다.", "🔄");
+      showToast("모든 필터 및 부위·초성 검색 조건이 초기화되었습니다.", "🔄");
     }
 
     function resetProductFilters() {
@@ -1789,20 +2348,33 @@
       renderMultiPartSelectBar(parts);
     }
 
-    // [요청사항 반영] 상단에 모든 부위 탭이 가로스크롤 없이 한번에 보이도록 flex-wrap 렌더링
+    // [요청사항 반영] 상단에 모든 부위 탭이 가로스크롤 없이 한번에 보이도록 flex-wrap 렌더링 + 초성 검색 필터링·하이라이트 연동
     function renderQuickPartChips(parts) {
       const bar = document.getElementById("quickPartChipBar");
       if (!bar) return;
-      const allParts = ["ALL", ...parts];
+      const q = String(STATE.partSearchQuery || "").trim();
+      const matchedSet = q
+        ? new Set(getPartSearchMatches(q, parts).map(m => m.part))
+        : null;
+      const displayParts = matchedSet
+        ? parts.filter(p => matchedSet.has(p) || p === STATE.part || (STATE.currentView === 4 && STATE.multiParts.includes(p)))
+        : parts;
+
+      const allParts = ["ALL", ...displayParts];
       bar.innerHTML = allParts.map(p => {
         const isMultiMode = STATE.currentView === 4;
         const isAct = isMultiMode
           ? (p === "ALL" ? STATE.multiParts.length === 0 : STATE.multiParts.includes(p))
           : (STATE.part === p);
-        const cls = isAct
+        const isSearchHit = Boolean(matchedSet && p !== "ALL" && matchedSet.has(p));
+        let cls = isAct
           ? (isMultiMode && p !== "ALL" ? "multi-active" : "active")
-          : "bg-white hover:bg-slate-100 text-slate-700 border-slate-300";
-        const lbl = p === "ALL" ? `전체(${parts.length}종)` : (isMultiMode && isAct ? `✓ ${p}` : p);
+          : (isSearchHit
+            ? "bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border-indigo-400 ring-1 ring-indigo-300"
+            : "bg-white hover:bg-slate-100 text-slate-700 border-slate-300");
+        const lbl = p === "ALL"
+          ? (matchedSet ? `전체(${parts.length}종 중 검색 ${matchedSet.size}종)` : `전체(${parts.length}종)`)
+          : (isMultiMode && isAct ? `✓ ${p}` : p);
         return `<button type="button" onclick="onClickTopPartTab('${escapeHtml(p)}')"
           class="part-chip ${cls} px-2 py-0.5 rounded-md border text-[11px] font-bold">
           ${escapeHtml(lbl)}
@@ -1815,10 +2387,24 @@
       if (!bar) return;
       const badge = document.getElementById("multiPartCountBadge");
       if (badge) badge.textContent = `선택 ${STATE.multiParts.length} / 최대 5개`;
-      bar.innerHTML = parts.map(p => {
+      const q = String(STATE.partSearchQuery || "").trim();
+      const matchedSet = q
+        ? new Set(getPartSearchMatches(q, parts).map(m => m.part))
+        : null;
+      const displayParts = matchedSet
+        ? parts.filter(p => matchedSet.has(p) || STATE.multiParts.includes(p))
+        : parts;
+
+      bar.innerHTML = displayParts.map(p => {
         const active = STATE.multiParts.includes(p);
+        const isSearchHit = Boolean(matchedSet && matchedSet.has(p));
+        const cls = active
+          ? "multi-active"
+          : (isSearchHit
+            ? "bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border-indigo-400 ring-1 ring-indigo-300"
+            : "bg-white hover:bg-slate-100 text-slate-700 border-slate-300");
         return `<button type="button" onclick="toggleMultiPartChip('${escapeHtml(p)}')"
-          class="part-chip ${active ? "multi-active" : "bg-white hover:bg-slate-100 text-slate-700 border-slate-300"} px-2.5 py-1 rounded-md border text-[11px] font-bold">
+          class="part-chip ${cls} px-2.5 py-1 rounded-md border text-[11px] font-bold">
           ${active ? "✓ " : ""}${escapeHtml(p)}
         </button>`;
       }).join("");
@@ -1906,6 +2492,7 @@
       const parts = Array.from(new Set(items.map(x => x.part).filter(Boolean)));
       renderQuickPartChips(parts);
       renderMultiPartSelectBar(parts);
+      syncView3KeepingUI();
     }
 
     function matchesGlobal5Filters(row, isItemRow = false, customKeeping = null) {
@@ -3259,14 +3846,40 @@
       if (dtBody) dtBody.innerHTML = tbodyHtml;
     }
 
-    // ===================== VIEW 3: 생산일자별 최저·최고가 분석 (👑근본한우 메인 대비 타플랫폼 데이터 구성) =====================
+    // ===================== VIEW 3: 생산일자별 최저·최고가 분석 (👑근본한우 메인 대비 타플랫폼 데이터 구성 + 냉장/냉동 필터 + 최저/최고 1:1 매핑) =====================
+    function renderSplitMinMaxRangeHtml(minTxt, minUrl, maxTxt, maxUrl, rawRange, minCls, maxCls) {
+      let m1 = String(minTxt || "").trim();
+      let m2 = String(maxTxt || "").trim();
+      if (!m1 && !m2 && rawRange && rawRange !== "-") {
+        if (rawRange.includes(" ~ ")) {
+          const sp = rawRange.split(" ~ ");
+          m1 = sp[0].trim();
+          m2 = sp.slice(1).join(" ~ ").trim();
+        } else {
+          m1 = rawRange.trim();
+        }
+      }
+      if (!m1 && !m2) return "-";
+      const lines = [];
+      if (m1) {
+        lines.push(`<div class="leading-snug">${fmtLink(minUrl, m1, minCls || "text-emerald-900 font-extrabold hover:underline")}</div>`);
+      }
+      if (m2 && m2 !== m1) {
+        lines.push(`<div class="leading-snug mt-0.5">${fmtLink(maxUrl, m2, maxCls || "text-amber-900 font-bold hover:underline")}</div>`);
+      }
+      return lines.join("");
+    }
+
     function renderView3ProductionDate() {
       const snap = ARCHIVE.snapshots[STATE.currentSnapIdx];
-      const filteredCohorts = (snap.cohorts || []).filter(c => matchesGlobal5Filters(c, false));
-      const filteredGrades = snap.grade_rows.filter(g => matchesGlobal5Filters(g, false));
+      syncView3KeepingUI();
+      // 3번 뷰 전용 냉장/냉동 구분필터(STATE.view3Keeping) 적용 (설정되어 있으면 우선, 아니면 글로벌 STATE.keeping)
+      const effView3Keep = STATE.view3Keeping !== "ALL" ? STATE.view3Keeping : STATE.keeping;
+      const filteredCohorts = (snap.cohorts || []).filter(c => matchesGlobal5Filters(c, false, effView3Keep));
+      const filteredGrades = snap.grade_rows.filter(g => matchesGlobal5Filters(g, false, effView3Keep));
       const mode = document.getElementById("prodDateFilterMode")?.value || "ALL";
 
-      // 1) 상단 4열 생산경과일 구간 요약 카드 (부위 탭 클릭 시 즉시 반응!)
+      // 1) 상단 4열 생산경과일 구간 요약 카드 (부위 탭 & 냉장/냉동 필터 클릭 시 즉시 반응 + 최저/최고 기준 상품명·URL 1:1 매핑)
       const bucketDefs = [
         { key: "FRESH", label: "🌱 당월 신선육 (0~14일)", match: c => (c.elapsed || 0) <= 14, border: "border-emerald-300" },
         { key: "NORM", label: "📦 숙성적기 (15~30일)", match: c => (c.elapsed || 0) >= 15 && (c.elapsed || 0) <= 30, border: "border-blue-300" },
@@ -3283,20 +3896,38 @@
         const bestMinObj = mins[0] || null;
         const bestMaxObj = maxs[0] || null;
         const avgV = avgs.length ? Math.round(avgs.reduce((a, b) => a + b, 0) / avgs.length) : null;
+        const minProdDesc = bestMinObj
+          ? `[${bestMinObj.platform}] ${bestMinObj.brand || "-"} · ${bestMinObj.part}(${bestMinObj.grade}/${bestMinObj.keeping})`
+          : "-";
+        const maxProdDesc = bestMaxObj
+          ? `[${bestMaxObj.platform}] ${bestMaxObj.brand || "-"} · ${bestMaxObj.part}(${bestMaxObj.grade}/${bestMaxObj.keeping})`
+          : "-";
+        const minTargetUrl = bestMinObj ? bestMinObj.min_url : "";
+        const maxTargetUrl = bestMaxObj ? (bestMaxObj.max_url || bestMaxObj.min_url) : "";
         return `
-          <div class="bg-white rounded-2xl p-4 border ${bd.border} shadow-xs">
+          <div class="bg-white rounded-2xl p-4 border ${bd.border} shadow-xs flex flex-col justify-between">
             <div class="flex items-center justify-between">
               <span class="text-xs font-extrabold text-slate-800">${bd.label}</span>
               <span class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-slate-100 text-slate-700 num-tab">${fmtNum(sub.length)}개 코호트</span>
             </div>
-            <div class="my-2 flex items-baseline justify-between">
-              <div>
-                <span class="text-[11px] text-slate-500 block">구간 최저가 (🔗)</span>
-                <strong class="text-lg font-extrabold text-blue-700 num-tab">${bestMinObj ? fmtLink(bestMinObj.min_url, fmtNum(bestMinObj.min) + "원", "text-blue-700 font-extrabold hover:underline") : "-"}</strong>
+            <div class="my-2.5 grid grid-cols-2 gap-2">
+              <div class="p-2 rounded-xl bg-emerald-50/60 border border-emerald-200">
+                <span class="text-[10px] font-extrabold text-emerald-800 block">구간 최저기준 상품 (🔗)</span>
+                <strong class="text-base lg:text-lg font-extrabold text-emerald-700 num-tab block mt-0.5">
+                  ${bestMinObj ? fmtLink(minTargetUrl, fmtNum(bestMinObj.min) + "원", "text-emerald-700 font-extrabold hover:underline") : "-"}
+                </strong>
+                <div class="text-[10px] text-slate-600 truncate mt-0.5" title="${escapeHtml(minProdDesc)}">
+                  ${bestMinObj ? fmtLink(minTargetUrl, minProdDesc, "text-slate-700 hover:underline font-semibold") : "-"}
+                </div>
               </div>
-              <div class="text-right">
-                <span class="text-[11px] text-slate-500 block">구간 최고가 (🔗)</span>
-                <strong class="text-lg font-extrabold text-slate-900 num-tab">${bestMaxObj ? fmtLink(bestMaxObj.max_url || bestMaxObj.min_url, fmtNum(bestMaxObj.max) + "원", "text-slate-900 font-extrabold hover:underline") : "-"}</strong>
+              <div class="p-2 rounded-xl bg-amber-50/60 border border-amber-200 text-right">
+                <span class="text-[10px] font-extrabold text-amber-900 block">구간 최고기준 상품 (🔗)</span>
+                <strong class="text-base lg:text-lg font-extrabold text-amber-900 num-tab block mt-0.5">
+                  ${bestMaxObj ? fmtLink(maxTargetUrl, fmtNum(bestMaxObj.max) + "원", "text-amber-900 font-extrabold hover:underline") : "-"}
+                </strong>
+                <div class="text-[10px] text-slate-600 truncate mt-0.5" title="${escapeHtml(maxProdDesc)}">
+                  ${bestMaxObj ? fmtLink(maxTargetUrl, maxProdDesc, "text-slate-700 hover:underline font-semibold") : "-"}
+                </div>
               </div>
             </div>
             <div class="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex justify-between num-tab">
@@ -3307,7 +3938,7 @@
         `;
       }).join("");
 
-      // 2) 노후 재고 덤핑 착시 감지 리포트
+      // 2) 노후 재고 덤핑 착시 감지 리포트 (신선육 최저/최고 URL & 숙성육 최저/최고 URL 각각 1:1 정밀 매핑)
       const dumpingRows = filteredGrades.filter(gr => gr.aged_range && gr.aged_range !== "-" && gr.fresh_range && gr.fresh_range !== "-");
       document.getElementById("dumpingAlertBadge").textContent = `${dumpingRows.length}건`;
       document.getElementById("dumpingAlertCards").innerHTML = dumpingRows.length === 0
@@ -3323,19 +3954,26 @@
             </div>
             <div class="grid grid-cols-2 gap-2 text-[11px] bg-white p-2 rounded-lg border border-amber-200">
               <div>
-                <span class="text-emerald-800 font-bold block">🌱 당월 신선육(≤14일)</span>
-                <span class="text-[10px] text-slate-700 leading-snug block">${fmtLink(gr.min_url, gr.fresh_range, "text-slate-700 hover:underline")}</span>
+                <span class="text-emerald-800 font-bold block mb-0.5">🌱 당월 신선육(≤14일) 최저/최고</span>
+                <div class="text-[10px] text-slate-700 space-y-0.5">
+                  ${renderSplitMinMaxRangeHtml(gr.fresh_min_txt, gr.fresh_min_url, gr.fresh_max_txt, gr.fresh_max_url, gr.fresh_range, "text-emerald-800 font-bold hover:underline", "text-slate-700 font-semibold hover:underline")}
+                </div>
               </div>
               <div>
-                <span class="text-amber-800 font-bold block">⏳ 숙성/장기(≥15일)</span>
-                <span class="text-[10px] text-slate-700 leading-snug block">${fmtLink(gr.max_url, gr.aged_range, "text-slate-700 hover:underline")}</span>
+                <span class="text-amber-800 font-bold block mb-0.5">⏳ 숙성/장기(≥15일) 최저/최고</span>
+                <div class="text-[10px] text-slate-700 space-y-0.5">
+                  ${renderSplitMinMaxRangeHtml(gr.aged_min_txt, gr.aged_min_url, gr.aged_max_txt, gr.aged_max_url, gr.aged_range, "text-amber-900 font-bold hover:underline", "text-slate-700 font-semibold hover:underline")}
+                </div>
               </div>
             </div>
-            <div class="flex items-center justify-between pt-0.5 text-[11px]">
-              <span class="text-amber-900 font-medium truncate max-w-[210px]">최저: ${fmtLink(gr.min_url, gr.min_detail || "-", "text-amber-900 hover:underline")}</span>
+            <div class="flex items-center justify-between gap-2 pt-0.5 text-[11px]">
+              <div class="min-w-0 flex-1 space-y-0.5">
+                <div class="text-emerald-900 font-semibold truncate">최저기준: ${fmtLink(gr.min_url, gr.min_detail || "-", "text-emerald-800 font-bold hover:underline")}</div>
+                <div class="text-amber-950 font-semibold truncate">최고기준: ${fmtLink(gr.max_url, gr.max_detail || "-", "text-amber-900 font-bold hover:underline")}</div>
+              </div>
               <div class="flex gap-1 shrink-0">
-                ${gr.min_url ? `<a href="${escapeHtml(expandUrl(gr.min_url))}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-emerald-700 text-white text-[10px] font-bold">최저가 ↗</a>` : ""}
-                ${gr.max_url ? `<a href="${escapeHtml(expandUrl(gr.max_url))}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-amber-700 text-white text-[10px] font-bold">최고가 ↗</a>` : ""}
+                ${gr.min_url ? `<a href="${escapeHtml(expandUrl(gr.min_url))}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-emerald-700 text-white text-[10px] font-bold">최저상품 ↗</a>` : ""}
+                ${gr.max_url ? `<a href="${escapeHtml(expandUrl(gr.max_url))}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-amber-800 text-white text-[10px] font-bold">최고상품 ↗</a>` : ""}
               </div>
             </div>
           </div>
@@ -3345,7 +3983,7 @@
       const ctx = document.getElementById("prodDateSpreadChart");
       if (ctx && typeof Chart !== "undefined") {
         const sortedChartRows = [...filteredGrades].sort((a, b) => (a.platforms?.["근본한우"]?.avg ? 0 : 1) - (b.platforms?.["근본한우"]?.avg ? 0 : 1)).slice(0, 16);
-        const labels = sortedChartRows.map(r => `${r.cattle === "한우암소" ? "[암]" : "[거]"}${r.part}(${r.grade})`);
+        const labels = sortedChartRows.map(r => `${r.cattle === "한우암소" ? "[암]" : "[거]"}${r.part}(${r.grade}·${r.keeping})`);
         const gbData = sortedChartRows.map(r => r.platforms?.["근본한우"]?.min || r.platforms?.["근본한우"]?.avg || null);
         const minData = sortedChartRows.map(r => r.comp_min || null);
         const avgData = sortedChartRows.map(r => r.comp_avg || null);
@@ -3373,7 +4011,7 @@
         });
       }
 
-      // 4) [요청사항 반영] 근본한우를 메인으로 대비 타플랫폼 상품 데이터 & 생산일자별 최저/최고가 매트릭스
+      // 4) [요청사항 반영] 근본한우를 메인으로 대비 타플랫폼 상품 데이터 & 생산일자별 최저/최고가 1:1 매트릭스
       let sortedForView3 = [...filteredGrades].sort((a, b) => {
         const aGb = a.platforms?.["근본한우"]?.avg ? 0 : 1;
         const bGb = b.platforms?.["근본한우"]?.avg ? 0 : 1;
@@ -3387,32 +4025,36 @@
         const gb = r.platforms?.["근본한우"];
         const gbMin = gb?.min || gb?.avg || null;
         const gbMax = gb?.max || gb?.avg || null;
+        const gbMinUrl = gb?.url || "";
+        const gbMaxUrl = gb?.max_url || gb?.url || "";
         const gbLow = gb?.avg && isLowStockQty(gb.cnt || 1, r.keeping);
         const gbHtml = gb && gb.avg
           ? `<div class="font-extrabold text-red-700 text-[13px] num-tab">
-               최저 ${fmtLink(gb.url || r.min_url, fmtNum(gbMin) + "원", "text-red-700 font-extrabold hover:underline")}
+               최저 ${fmtLink(gbMinUrl, fmtNum(gbMin) + "원", "text-red-700 font-extrabold hover:underline")}
              </div>
              <div class="text-[11px] font-bold text-slate-700 num-tab mt-0.5">
-               최고 ${fmtLink(gb.max_url || gb.url || r.max_url, fmtNum(gbMax) + "원", "text-slate-800 font-bold hover:underline")}
+               최고 ${fmtLink(gbMaxUrl, fmtNum(gbMax) + "원", "text-slate-800 font-bold hover:underline")}
              </div>
              <div class="text-[10px] text-slate-600 mt-0.5">
                ${escapeHtml(gb.b_min || "-")} · 재고 ${fmtNum(gb.cnt || 1)}건 ${gbLow ? '<span class="text-red-600 font-bold">⚠️주의</span>' : ""}
              </div>`
           : `<span class="text-slate-400 font-semibold">미입점 (타사비교)</span>`;
 
-        // 타플랫폼 5곳(미트박스·금천·프렌즈·탑·본대로) 최저가🔗~최고가🔗 및 근본한우 대비 편차 요약
+        // 타플랫폼 5곳(미트박스·금천·프렌즈·탑·본대로) 최저가🔗(po.url) ~ 최고가🔗(po.max_url) 1:1 매핑 및 근본한우 대비 편차 요약
         const compBadgesHtml = COMP_PLATFORMS.map(pk => {
           const po = r.platforms?.[pk];
           if (!po || !po.avg) return "";
           const cMin = po.min || po.avg;
           const cMax = po.max || po.avg;
+          const pMinUrl = po.url || "";
+          const pMaxUrl = po.max_url || po.url || "";
           const diffStr = gbMin ? ((cMin - gbMin) >= 0 ? `+${fmtNum(cMin - gbMin)}` : `${fmtNum(cMin - gbMin)}`) : "";
           const diffCls = gbMin ? ((cMin - gbMin) >= 0 ? "text-emerald-700" : "text-red-600") : "text-slate-500";
           return `<div class="flex items-center justify-between gap-2 text-[11px] border-b border-slate-100 py-0.5">
             <span class="font-bold text-slate-700">${escapeHtml(pk)}</span>
             <span class="num-tab">
-              ${fmtLink(po.url || r.min_url, fmtNum(cMin) + "원", "font-extrabold text-blue-700 hover:underline")}
-              ~ ${fmtLink(po.max_url || po.url || r.max_url, fmtNum(cMax) + "원", "font-bold text-amber-800 hover:underline")}
+              <span title="최저기준: ${escapeHtml(po.b_min || pk)}">${fmtLink(pMinUrl, fmtNum(cMin) + "원", "font-extrabold text-blue-700 hover:underline")}</span>
+              ~ <span title="최고기준: ${escapeHtml(po.b_max || po.b_min || pk)}">${fmtLink(pMaxUrl, fmtNum(cMax) + "원", "font-bold text-amber-800 hover:underline")}</span>
               ${diffStr ? `<strong class="${diffCls} ml-1">(${diffStr})</strong>` : ""}
             </span>
           </div>`;
@@ -3430,29 +4072,64 @@
               <div class="mt-1 text-slate-900">[${escapeHtml(r.major)}] ${escapeHtml(r.part)}</div>
             </td>
             <td class="py-2.5 px-3 bg-red-50/40 border-x border-red-200">${gbHtml}</td>
-            <td class="py-2.5 px-3 text-[11px] text-emerald-950 max-w-[210px]">
-              ${r.fresh_range && r.fresh_range !== "-" ? fmtLink(r.min_url, r.fresh_range, "text-emerald-900 font-semibold hover:underline") : "-"}
+            <td class="py-2.5 px-3 text-[11px] text-emerald-950 max-w-[230px]">
+              ${renderSplitMinMaxRangeHtml(r.fresh_min_txt, r.fresh_min_url, r.fresh_max_txt, r.fresh_max_url, r.fresh_range, "text-emerald-800 font-extrabold hover:underline", "text-emerald-950 font-semibold hover:underline")}
             </td>
-            <td class="py-2.5 px-3 text-[11px] text-amber-950 max-w-[210px]">
-              ${r.aged_range && r.aged_range !== "-" ? fmtLink(r.max_url, r.aged_range, "text-amber-900 font-semibold hover:underline") : "-"}
+            <td class="py-2.5 px-3 text-[11px] text-amber-950 max-w-[230px]">
+              ${renderSplitMinMaxRangeHtml(r.aged_min_txt, r.aged_min_url, r.aged_max_txt, r.aged_max_url, r.aged_range, "text-amber-800 font-extrabold hover:underline", "text-amber-950 font-semibold hover:underline")}
             </td>
-            <td class="py-2 px-3 min-w-[245px]">${compBadgesHtml || "-"}</td>
-            <td class="py-2.5 px-3 text-[11px] font-bold text-blue-700 max-w-[190px]">
+            <td class="py-2 px-3 min-w-[250px]">${compBadgesHtml || "-"}</td>
+            <td class="py-2.5 px-3 text-[11px] font-bold text-blue-700 max-w-[200px]">
               ${fmtLink(r.min_url, r.min_detail || "-", "text-blue-700 font-extrabold hover:underline")}
             </td>
-            <td class="py-2.5 px-3 text-[11px] font-bold text-amber-800 max-w-[190px]">
+            <td class="py-2.5 px-3 text-[11px] font-bold text-amber-800 max-w-[200px]">
               ${fmtLink(r.max_url, r.max_detail || "-", "text-amber-800 font-extrabold hover:underline")}
             </td>
             <td class="py-2.5 px-3">
               <div class="text-[11px] font-bold ${dp !== null && dp < 0 ? "text-red-600" : "text-emerald-700"}">${escapeHtml(diagTxt)}</div>
               <div class="flex gap-1 mt-1">
-                ${r.min_url ? `<a href="${escapeHtml(expandUrl(r.min_url))}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-emerald-700 text-white text-[10px] font-bold">최저가 ↗</a>` : ""}
-                ${r.max_url ? `<a href="${escapeHtml(expandUrl(r.max_url))}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-navy-900 text-white text-[10px] font-bold">최고가 ↗</a>` : ""}
+                ${r.min_url ? `<a href="${escapeHtml(expandUrl(r.min_url))}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-emerald-700 text-white text-[10px] font-bold">최저상품 ↗</a>` : ""}
+                ${r.max_url ? `<a href="${escapeHtml(expandUrl(r.max_url))}" target="_blank" rel="noopener" class="px-2 py-0.5 rounded bg-navy-900 text-white text-[10px] font-bold">최고상품 ↗</a>` : ""}
               </div>
             </td>
           </tr>
         `;
       }).join("");
+
+      // 모바일 카드 뷰도 동일하게 1:1 매핑 렌더링
+      const mobWrap = document.getElementById("prodDateMobileCards");
+      if (mobWrap) {
+        mobWrap.innerHTML = sortedForView3.slice(0, 50).map(r => {
+          const gb = r.platforms?.["근본한우"];
+          const gbMin = gb?.min || gb?.avg || null;
+          const gbMax = gb?.max || gb?.avg || null;
+          return `
+            <div class="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2 shadow-2xs">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1 flex-wrap">
+                  ${cattleBadge(r.cattle)} ${gradeBadge(r.grade)} ${keepingBadge(r.keeping)}
+                  <strong class="text-xs font-extrabold text-slate-900">[${escapeHtml(r.major)}] ${escapeHtml(r.part)}</strong>
+                </div>
+                ${gbMin ? `<span class="text-xs font-extrabold text-red-700">👑 ${fmtLink(gb.url, fmtNum(gbMin) + "원", "text-red-700 font-extrabold underline")}</span>` : `<span class="text-[11px] text-slate-400">미입점</span>`}
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-[11px] bg-slate-50 p-2 rounded-lg">
+                <div>
+                  <span class="font-bold text-emerald-800 block">🌱 당월 신선육(≤14일)</span>
+                  ${renderSplitMinMaxRangeHtml(r.fresh_min_txt, r.fresh_min_url, r.fresh_max_txt, r.fresh_max_url, r.fresh_range)}
+                </div>
+                <div>
+                  <span class="font-bold text-amber-800 block">⏳ 숙성/장기(≥15일)</span>
+                  ${renderSplitMinMaxRangeHtml(r.aged_min_txt, r.aged_min_url, r.aged_max_txt, r.aged_max_url, r.aged_range)}
+                </div>
+              </div>
+              <div class="text-[11px] space-y-0.5 pt-1 border-t border-slate-100">
+                <div>최저기준: ${fmtLink(r.min_url, r.min_detail || "-", "text-blue-700 font-extrabold hover:underline")}</div>
+                <div>최고기준: ${fmtLink(r.max_url, r.max_detail || "-", "text-amber-800 font-extrabold hover:underline")}</div>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
     }
 
     // ===================== VIEW 4: 전 상품 필터 & 중복 탭(최대 5개) 반응형 카테고리 차트 & 누적 체크 =====================
@@ -3631,7 +4308,13 @@
         if (fStatus === "TRACKED" && !STATE.trackedKeys.has(getCohortKey(c))) return false;
         if (fKw) {
           const hay = `${c.cattle} ${c.grade} ${c.keeping} ${c.major} ${c.part} ${c.platform} ${c.brand} ${c.dt_range || ""}`.toLowerCase();
-          if (!hay.includes(fKw)) return false;
+          const hayCho = extractChosung(hay);
+          const hayChoNorm = normalizeSingleChosung(hayCho);
+          const kwNorm = normalizeSingleChosung(fKw);
+          const assocParts = getPartSearchMatches(fKw, [c.part]);
+          if (!hay.includes(fKw) && !hayCho.includes(fKw) && !hayChoNorm.includes(kwNorm) && assocParts.length === 0) {
+            return false;
+          }
         }
         return true;
       });

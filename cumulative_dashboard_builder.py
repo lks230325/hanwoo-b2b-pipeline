@@ -78,10 +78,25 @@ def _read_sheet_by_date(wb: openpyxl.Workbook, sheet_name: str) -> Dict[str, Lis
     return by_date
 
 
-def _build_url_lookup_from_raw(s4_rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _calc_elapsed_days(prod_dt_str: str, ref_dt_str: str) -> Optional[int]:
+    p_s = str(prod_dt_str or "").strip()[:10]
+    r_s = str(ref_dt_str or "").strip()[:10]
+    if len(p_s) != 10 or p_s == "-":
+        return None
+    try:
+        p_dt = datetime.strptime(p_s, "%Y-%m-%d")
+        r_dt = datetime.strptime(r_s, "%Y-%m-%d") if len(r_s) == 10 else datetime.now()
+        return max(0, (r_dt - p_dt).days)
+    except Exception:
+        return None
+
+
+def _build_url_lookup_from_raw(s4_rows: List[Dict[str, Any]], ref_dt_str: str = "") -> Dict[str, Any]:
     by_brand: Dict[Tuple[str, str, str, str, str, str], List[Tuple[int, str]]] = {}
     by_cond_plat: Dict[Tuple[str, str, str, str, str], List[Tuple[int, str]]] = {}
     by_cond: Dict[Tuple[str, str, str, str], List[Tuple[int, str]]] = {}
+    by_cond_fresh: Dict[Tuple[str, str, str, str], List[Tuple[int, str]]] = {}
+    by_cond_aged: Dict[Tuple[str, str, str, str], List[Tuple[int, str]]] = {}
     by_item_plat: Dict[Tuple[str, str, str, str], List[Tuple[int, str]]] = {}
     by_item: Dict[Tuple[str, str, str], List[Tuple[int, str]]] = {}
 
@@ -95,6 +110,7 @@ def _build_url_lookup_from_raw(s4_rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         grade = str(r.get("등급") or "").strip()
         plat = str(r.get("플랫폼명") or "").strip()
         brand = str(r.get("브랜드명") or "").strip()
+        prod_dt = str(r.get("생산일자(가공일자/도축일자)") or "").strip()
         price = _safe_int(r.get("단위단가")) or 0
         if price <= 0:
             continue
@@ -104,6 +120,13 @@ def _build_url_lookup_from_raw(s4_rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         by_cond.setdefault((cattle, keeping, part, grade), []).append((price, url))
         by_item_plat.setdefault((cattle, keeping, part, plat), []).append((price, url))
         by_item.setdefault((cattle, keeping, part), []).append((price, url))
+
+        el = _calc_elapsed_days(prod_dt, ref_dt_str or str(r.get("수집일자") or ""))
+        if el is not None:
+            if el <= 14:
+                by_cond_fresh.setdefault((cattle, keeping, part, grade), []).append((price, url))
+            else:
+                by_cond_aged.setdefault((cattle, keeping, part, grade), []).append((price, url))
 
     def _min_max_url(lst: List[Tuple[int, str]]) -> Tuple[str, str]:
         if not lst:
@@ -116,6 +139,8 @@ def _build_url_lookup_from_raw(s4_rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         "by_brand": {k: _min_max_url(v) for k, v in by_brand.items()},
         "by_cond_plat": {k: _min_max_url(v) for k, v in by_cond_plat.items()},
         "by_cond": {k: _min_max_url(v) for k, v in by_cond.items()},
+        "by_cond_fresh": {k: _min_max_url(v) for k, v in by_cond_fresh.items()},
+        "by_cond_aged": {k: _min_max_url(v) for k, v in by_cond_aged.items()},
         "by_item_plat": {k: _min_max_url(v) for k, v in by_item_plat.items()},
         "by_item": {k: _min_max_url(v) for k, v in by_item.items()},
     }
@@ -134,18 +159,26 @@ def _compact_full_item_row(r: Dict[str, Any], url_lookup: Dict[str, Any]) -> Dic
         mx = _safe_int(r.get(f"{p}_최고가(원/kg)"))
         if p == "근본한우":
             b_min = str(r.get("근본한우_생산일자") or r.get("근본한우_최저가_브랜드(등급/생산일)") or "-")
+            b_max = b_min
         else:
             b_min = str(r.get(f"{p}_최저가_브랜드(생산일)") or r.get(f"{p}_최저가_브랜드(등급/생산일)") or "-")
+            b_max = str(r.get(f"{p}_최고가_브랜드(생산일)") or b_min)
         p_url = str(r.get(f"{p}_최저가_URL") or "").strip()
+        p_max_url = str(r.get(f"{p}_최고가_URL") or "").strip()
+        fb_mn, fb_mx = url_lookup["by_item_plat"].get((cattle, keeping, part, p), ("", ""))
         if not p_url and av:
-            p_url = url_lookup["by_item_plat"].get((cattle, keeping, part, p), ("", ""))[0]
+            p_url = fb_mn
+        if not p_max_url and av:
+            p_max_url = fb_mx or p_url
         plats_data[p] = {
             "cnt": cnt,
             "min": mn,
             "avg": av,
             "max": mx,
             "b_min": b_min,
+            "b_max": b_max,
             "url": p_url,
+            "max_url": p_max_url or p_url,
         }
 
     min_url = str(r.get("최저가_상품URL") or "").strip()
@@ -183,29 +216,38 @@ def _compact_grade_row(r: Dict[str, Any], url_lookup: Dict[str, Any]) -> Dict[st
 
     plats_data: Dict[str, Dict[str, Any]] = {}
     for p in PLATFORMS:
+        fb_mn, fb_mx = url_lookup["by_cond_plat"].get((cattle, keeping, part, grade, p), ("", ""))
         if p == "근본한우":
             mn = _safe_int(r.get("근본한우_최저가(원/kg)"))
             av = _safe_int(r.get("근본한우_평균가(원/kg)"))
             mx = _safe_int(r.get("근본한우_최고가(원/kg)"))
             cnt = 1 if av else 0
             b_min = str(r.get("근본한우_브랜드(생산일자)") or "-")
-            p_url = url_lookup["by_cond_plat"].get((cattle, keeping, part, grade, "근본한우"), ("", ""))[0] if av else ""
+            b_max = b_min
+            p_url = fb_mn if av else ""
+            p_max_url = (fb_mx or fb_mn) if av else ""
         else:
             cnt = _safe_int(r.get(f"{p}_건수")) or 0
             mn = _safe_int(r.get(f"{p}_최저가(원/kg)"))
             av = _safe_int(r.get(f"{p}_평균가(원/kg)"))
             mx = _safe_int(r.get(f"{p}_최고가(원/kg)"))
             b_min = str(r.get(f"{p}_최저가_브랜드(생산일)") or "-")
+            b_max = str(r.get(f"{p}_최고가_브랜드(생산일)") or b_min)
             p_url = str(r.get(f"{p}_최저가_URL") or "").strip()
+            p_max_url = str(r.get(f"{p}_최고가_URL") or "").strip()
             if not p_url and av:
-                p_url = url_lookup["by_cond_plat"].get((cattle, keeping, part, grade, p), ("", ""))[0]
+                p_url = fb_mn
+            if not p_max_url and av:
+                p_max_url = fb_mx or p_url
         plats_data[p] = {
             "cnt": cnt,
             "min": mn,
             "avg": av,
             "max": mx,
             "b_min": b_min,
+            "b_max": b_max,
             "url": p_url,
+            "max_url": p_max_url or p_url,
         }
 
     min_url = str(r.get("최저가_상품URL") or "").strip()
@@ -214,6 +256,9 @@ def _compact_grade_row(r: Dict[str, Any], url_lookup: Dict[str, Any]) -> Dict[st
         fb_min, fb_max = url_lookup["by_cond"].get((cattle, keeping, part, grade), ("", ""))
         min_url = min_url or fb_min
         max_url = max_url or fb_max
+
+    f_mn_u, f_mx_u = url_lookup.get("by_cond_fresh", {}).get((cattle, keeping, part, grade), ("", ""))
+    a_mn_u, a_mx_u = url_lookup.get("by_cond_aged", {}).get((cattle, keeping, part, grade), ("", ""))
 
     return {
         "date": str(r.get("수집일자") or ""),
@@ -229,7 +274,11 @@ def _compact_grade_row(r: Dict[str, Any], url_lookup: Dict[str, Any]) -> Dict[st
         "min_url": min_url,
         "max_url": max_url,
         "fresh_range": str(r.get("신선육(14일이내)_최저~최고(브랜드)") or "-"),
+        "fresh_min_url": f_mn_u,
+        "fresh_max_url": f_mx_u,
         "aged_range": str(r.get("숙성/장기(15일이상)_최저~최고(브랜드)") or "-"),
+        "aged_min_url": a_mn_u,
+        "aged_max_url": a_mx_u,
         "comp_min": _safe_int(r.get("타사통합_최저가(원/kg)")),
         "comp_avg": _safe_int(r.get("타사통합_평균가(원/kg)")),
         "comp_max": _safe_int(r.get("타사통합_최고가(원/kg)")),
@@ -248,7 +297,7 @@ def _build_snapshot_from_sheets(
     s5_rows: List[Dict[str, Any]],
     updated_at: Optional[str] = None,
 ) -> Dict[str, Any]:
-    url_lookup = _build_url_lookup_from_raw(s4_rows)
+    url_lookup = _build_url_lookup_from_raw(s4_rows, dt_str)
     items_compact = [_compact_full_item_row(r, url_lookup) for r in s0_rows]
     grades_compact = [_compact_grade_row(r, url_lookup) for r in s1_rows]
 
@@ -396,7 +445,7 @@ def _build_snapshot_from_sheets(
         "ekape_rows": ekape_list,
         "full_items": items_compact,
         "grade_rows": grades_compact,
-        "cohorts": cohort_list[:900],
+        "cohorts": cohort_list[:2500],
         "audit_highlights": audit_list[:150],
     }
 
@@ -625,6 +674,34 @@ def _expand_url_py(u: Any) -> str:
     return s
 
 
+_PLAT_DOMAIN_HINTS = {
+    "근본한우": ("meatbox.co.kr", "@mb:"),
+    "미트박스": ("meatbox.co.kr", "@mb:"),
+    "미트프렌즈": ("meatfriends.co.kr", "@mf:"),
+    "탑미트": ("topmeat.co.kr", "@tm:"),
+    "금천미트": ("ekcm.co.kr", "@gc:"),
+    "본대로": ("bondaero.kr", "@bd:"),
+}
+
+
+def _extract_plat_from_label(txt: str) -> str:
+    s = str(txt or "")
+    for p in PLATFORMS:
+        if f"[{p}]" in s:
+            return p
+    for p in PLATFORMS:
+        if p in s:
+            return p
+    return ""
+
+
+def _url_matches_plat(url_str: str, plat: str) -> bool:
+    u = str(url_str or "")
+    if not u or not plat or plat not in _PLAT_DOMAIN_HINTS:
+        return False
+    return any(h in u for h in _PLAT_DOMAIN_HINTS[plat])
+
+
 def _slim_archive_for_html(archive_payload: Dict[str, Any]) -> Dict[str, Any]:
     snaps = archive_payload.get("snapshots", [])
     slim_snaps = []
@@ -632,33 +709,90 @@ def _slim_archive_for_html(archive_payload: Dict[str, Any]) -> Dict[str, Any]:
         is_latest = (idx == len(snaps) - 1)
         s_copy = dict(sn)
 
-        # 코호트 기반 플랫폼별 최고가 URL(max_url) 역추적 맵 구축
+        # 코호트 기반 플랫폼별·신선도구간별 최저가/최고가 URL 정밀 역추적 맵 구축
+        cond_plat_min_url: Dict[Tuple[str, str, str, str, str], Tuple[int, str]] = {}
         cond_plat_max_url: Dict[Tuple[str, str, str, str, str], Tuple[int, str]] = {}
+        item_plat_min_url: Dict[Tuple[str, str, str, str], Tuple[int, str]] = {}
         item_plat_max_url: Dict[Tuple[str, str, str, str], Tuple[int, str]] = {}
+        cond_fresh_plat_min: Dict[Tuple[str, str, str, str, str], Tuple[int, str]] = {}
+        cond_fresh_plat_max: Dict[Tuple[str, str, str, str, str], Tuple[int, str]] = {}
+        cond_aged_plat_min: Dict[Tuple[str, str, str, str, str], Tuple[int, str]] = {}
+        cond_aged_plat_max: Dict[Tuple[str, str, str, str, str], Tuple[int, str]] = {}
+        cond_fresh_min: Dict[Tuple[str, str, str, str], Tuple[int, str]] = {}
+        cond_fresh_max: Dict[Tuple[str, str, str, str], Tuple[int, str]] = {}
+        cond_aged_min: Dict[Tuple[str, str, str, str], Tuple[int, str]] = {}
+        cond_aged_max: Dict[Tuple[str, str, str, str], Tuple[int, str]] = {}
+
         for c in sn.get("cohorts", []):
-            cu = str(c.get("max_url") or c.get("min_url") or "").strip()
-            if not cu:
+            mn_u = str(c.get("min_url") or c.get("max_url") or "").strip()
+            mx_u = str(c.get("max_url") or c.get("min_url") or "").strip()
+            if not mn_u and not mx_u:
                 continue
+            mn_p = int(c.get("min") or c.get("avg") or 0)
             mx_p = int(c.get("max") or c.get("avg") or 0)
+            el = int(c.get("elapsed") or 0)
             k5 = (str(c.get("cattle") or ""), str(c.get("keeping") or ""), str(c.get("part") or ""), str(c.get("grade") or ""), str(c.get("platform") or ""))
-            k4 = (k5[0], k5[1], k5[2], k5[4])
-            if k5 not in cond_plat_max_url or mx_p >= cond_plat_max_url[k5][0]:
-                cond_plat_max_url[k5] = (mx_p, cu)
-            if k4 not in item_plat_max_url or mx_p >= item_plat_max_url[k4][0]:
-                item_plat_max_url[k4] = (mx_p, cu)
+            k4_cond = (k5[0], k5[1], k5[2], k5[3])
+            k4_item = (k5[0], k5[1], k5[2], k5[4])
+
+            if mn_p > 0 and mn_u:
+                if k5 not in cond_plat_min_url or mn_p <= cond_plat_min_url[k5][0]:
+                    cond_plat_min_url[k5] = (mn_p, mn_u)
+                if k4_item not in item_plat_min_url or mn_p <= item_plat_min_url[k4_item][0]:
+                    item_plat_min_url[k4_item] = (mn_p, mn_u)
+                if el <= 14:
+                    if k5 not in cond_fresh_plat_min or mn_p <= cond_fresh_plat_min[k5][0]:
+                        cond_fresh_plat_min[k5] = (mn_p, mn_u)
+                    if k4_cond not in cond_fresh_min or mn_p <= cond_fresh_min[k4_cond][0]:
+                        cond_fresh_min[k4_cond] = (mn_p, mn_u)
+                else:
+                    if k5 not in cond_aged_plat_min or mn_p <= cond_aged_plat_min[k5][0]:
+                        cond_aged_plat_min[k5] = (mn_p, mn_u)
+                    if k4_cond not in cond_aged_min or mn_p <= cond_aged_min[k4_cond][0]:
+                        cond_aged_min[k4_cond] = (mn_p, mn_u)
+
+            if mx_p > 0 and mx_u:
+                if k5 not in cond_plat_max_url or mx_p >= cond_plat_max_url[k5][0]:
+                    cond_plat_max_url[k5] = (mx_p, mx_u)
+                if k4_item not in item_plat_max_url or mx_p >= item_plat_max_url[k4_item][0]:
+                    item_plat_max_url[k4_item] = (mx_p, mx_u)
+                if el <= 14:
+                    if k5 not in cond_fresh_plat_max or mx_p >= cond_fresh_plat_max[k5][0]:
+                        cond_fresh_plat_max[k5] = (mx_p, mx_u)
+                    if k4_cond not in cond_fresh_max or mx_p >= cond_fresh_max[k4_cond][0]:
+                        cond_fresh_max[k4_cond] = (mx_p, mx_u)
+                else:
+                    if k5 not in cond_aged_plat_max or mx_p >= cond_aged_plat_max[k5][0]:
+                        cond_aged_plat_max[k5] = (mx_p, mx_u)
+                    if k4_cond not in cond_aged_max or mx_p >= cond_aged_max[k4_cond][0]:
+                        cond_aged_max[k4_cond] = (mx_p, mx_u)
 
         slim_items = []
         for it in sn.get("full_items", []):
             it_c = {k: _shorten_url(v) for k, v in it.items() if v is not None and v != "-" and v != "" and k != "date"}
+            c_s, k_s, p_s = str(it.get("cattle") or ""), str(it.get("keeping") or ""), str(it.get("part") or "")
             plats_clean = {}
             for p, p_obj in it.get("platforms", {}).items():
                 if p_obj and p_obj.get("avg"):
                     po_c = {k: _shorten_url(v) for k, v in p_obj.items() if v is not None and v != "-" and v != "" and v != 0}
+                    if not po_c.get("url"):
+                        fb_mn = item_plat_min_url.get((c_s, k_s, p_s, p), (0, ""))[1]
+                        if fb_mn:
+                            po_c["url"] = _shorten_url(fb_mn)
                     if not po_c.get("max_url"):
-                        fb_mx = item_plat_max_url.get((str(it.get("cattle") or ""), str(it.get("keeping") or ""), str(it.get("part") or ""), p), (0, ""))[1]
+                        fb_mx = item_plat_max_url.get((c_s, k_s, p_s, p), (0, ""))[1]
                         po_c["max_url"] = _shorten_url(fb_mx or p_obj.get("url") or it.get("max_url") or "")
                     plats_clean[p] = po_c
             it_c["platforms"] = plats_clean
+
+            # 품목 전체 최저가/최고가 상세의 플랫폼과 URL 일치 보정
+            mn_plat = _extract_plat_from_label(it.get("min_detail", ""))
+            if mn_plat and plats_clean.get(mn_plat, {}).get("url") and not _url_matches_plat(it_c.get("min_url", ""), mn_plat):
+                it_c["min_url"] = plats_clean[mn_plat]["url"]
+            mx_plat = _extract_plat_from_label(it.get("max_detail", ""))
+            if mx_plat and plats_clean.get(mx_plat, {}).get("max_url") and not _url_matches_plat(it_c.get("max_url", ""), mx_plat):
+                it_c["max_url"] = plats_clean[mx_plat]["max_url"]
+
             slim_items.append(it_c)
         s_copy["full_items"] = slim_items
 
@@ -671,22 +805,116 @@ def _slim_archive_for_html(archive_payload: Dict[str, Any]) -> Dict[str, Any]:
             ][:120]
         for gr in src_grades:
             gr_c = {k: _shorten_url(v) for k, v in gr.items() if v is not None and v != "-" and v != "" and k != "date"}
+            c_s, k_s, p_s, g_s = str(gr.get("cattle") or ""), str(gr.get("keeping") or ""), str(gr.get("part") or ""), str(gr.get("grade") or "")
+            k4_c = (c_s, k_s, p_s, g_s)
             plats_clean = {}
             for p, p_obj in gr.get("platforms", {}).items():
                 if p_obj and p_obj.get("avg"):
                     po_c = {k: _shorten_url(v) for k, v in p_obj.items() if v is not None and v != "-" and v != "" and v != 0}
+                    if not po_c.get("url"):
+                        fb_mn = cond_plat_min_url.get((c_s, k_s, p_s, g_s, p), (0, ""))[1] or item_plat_min_url.get((c_s, k_s, p_s, p), (0, ""))[1]
+                        if fb_mn:
+                            po_c["url"] = _shorten_url(fb_mn)
                     if not po_c.get("max_url"):
-                        fb_mx = cond_plat_max_url.get((str(gr.get("cattle") or ""), str(gr.get("keeping") or ""), str(gr.get("part") or ""), str(gr.get("grade") or ""), p), (0, ""))[1]
-                        po_c["max_url"] = _shorten_url(fb_mx or p_obj.get("url") or gr.get("max_url") or "")
+                        fb_mx = cond_plat_max_url.get((c_s, k_s, p_s, g_s, p), (0, ""))[1] or item_plat_max_url.get((c_s, k_s, p_s, p), (0, ""))[1]
+                        po_c["max_url"] = _shorten_url(fb_mx or po_c.get("url") or gr.get("max_url") or "")
                     plats_clean[p] = po_c
             gr_c["platforms"] = plats_clean
+
+            # 1) 시장 전체 최저가 / 최고가 상세의 플랫폼과 실제 URL 1:1 매핑 보정
+            mn_plat = _extract_plat_from_label(gr.get("min_detail", ""))
+            if mn_plat and plats_clean.get(mn_plat, {}).get("url") and not _url_matches_plat(gr_c.get("min_url", ""), mn_plat):
+                gr_c["min_url"] = plats_clean[mn_plat]["url"]
+            mx_plat = _extract_plat_from_label(gr.get("max_detail", ""))
+            if mx_plat and plats_clean.get(mx_plat, {}).get("max_url") and not _url_matches_plat(gr_c.get("max_url", ""), mx_plat):
+                gr_c["max_url"] = plats_clean[mx_plat]["max_url"]
+
+            # 2) 신선육(≤14일) 최저가 상품 / 최고가 상품 텍스트 분리 및 개별 1:1 URL 매핑
+            f_rng = str(gr.get("fresh_range") or "").strip()
+            if f_rng and f_rng != "-":
+                f_parts = [x.strip() for x in f_rng.split(" ~ ", 1)]
+                f_mn_txt = f_parts[0]
+                f_mx_txt = f_parts[1] if len(f_parts) > 1 else f_parts[0]
+                gr_c["fresh_min_txt"] = f_mn_txt
+                gr_c["fresh_max_txt"] = f_mx_txt
+
+                pf_mn = _extract_plat_from_label(f_mn_txt)
+                pf_mx = _extract_plat_from_label(f_mx_txt)
+                f_mn_u = str(gr_c.get("fresh_min_url") or "")
+                if not f_mn_u or (pf_mn and not _url_matches_plat(f_mn_u, pf_mn)):
+                    f_mn_u = (
+                        (cond_fresh_plat_min.get((c_s, k_s, p_s, g_s, pf_mn), (0, ""))[1] if pf_mn else "")
+                        or (plats_clean.get(pf_mn, {}).get("url") if pf_mn else "")
+                        or cond_fresh_min.get(k4_c, (0, ""))[1]
+                        or gr_c.get("min_url")
+                        or ""
+                    )
+                f_mx_u = str(gr_c.get("fresh_max_url") or "")
+                if not f_mx_u or (pf_mx and not _url_matches_plat(f_mx_u, pf_mx)):
+                    f_mx_u = (
+                        (cond_fresh_plat_max.get((c_s, k_s, p_s, g_s, pf_mx), (0, ""))[1] if pf_mx else "")
+                        or (plats_clean.get(pf_mx, {}).get("max_url") if pf_mx else "")
+                        or cond_fresh_max.get(k4_c, (0, ""))[1]
+                        or gr_c.get("max_url")
+                        or ""
+                    )
+                gr_c["fresh_min_url"] = _shorten_url(f_mn_u)
+                gr_c["fresh_max_url"] = _shorten_url(f_mx_u)
+
+            # 3) 숙성/장기보관(≥15일) 최저가 상품 / 최고가 상품 텍스트 분리 및 개별 1:1 URL 매핑
+            a_rng = str(gr.get("aged_range") or "").strip()
+            if a_rng and a_rng != "-":
+                a_parts = [x.strip() for x in a_rng.split(" ~ ", 1)]
+                a_mn_txt = a_parts[0]
+                a_mx_txt = a_parts[1] if len(a_parts) > 1 else a_parts[0]
+                gr_c["aged_min_txt"] = a_mn_txt
+                gr_c["aged_max_txt"] = a_mx_txt
+
+                pa_mn = _extract_plat_from_label(a_mn_txt)
+                pa_mx = _extract_plat_from_label(a_mx_txt)
+                a_mn_u = str(gr_c.get("aged_min_url") or "")
+                if not a_mn_u or (pa_mn and not _url_matches_plat(a_mn_u, pa_mn)):
+                    a_mn_u = (
+                        (cond_aged_plat_min.get((c_s, k_s, p_s, g_s, pa_mn), (0, ""))[1] if pa_mn else "")
+                        or (plats_clean.get(pa_mn, {}).get("url") if pa_mn else "")
+                        or cond_aged_min.get(k4_c, (0, ""))[1]
+                        or gr_c.get("min_url")
+                        or ""
+                    )
+                a_mx_u = str(gr_c.get("aged_max_url") or "")
+                if not a_mx_u or (pa_mx and not _url_matches_plat(a_mx_u, pa_mx)):
+                    a_mx_u = (
+                        (cond_aged_plat_max.get((c_s, k_s, p_s, g_s, pa_mx), (0, ""))[1] if pa_mx else "")
+                        or (plats_clean.get(pa_mx, {}).get("max_url") if pa_mx else "")
+                        or cond_aged_max.get(k4_c, (0, ""))[1]
+                        or gr_c.get("max_url")
+                        or ""
+                    )
+                gr_c["aged_min_url"] = _shorten_url(a_mn_u)
+                gr_c["aged_max_url"] = _shorten_url(a_mx_u)
+
             slim_grades.append(gr_c)
         s_copy["grade_rows"] = slim_grades
 
         src_cohorts = sn.get("cohorts", [])
+        if is_latest and len(src_cohorts) > 900:
+            # 최저가 순 상위 코호트와 최고가 순 상위 코호트를 모두 포함하여 구간 최저가·최고가 100% 정합성 보장
+            by_min = sorted(src_cohorts, key=lambda x: (0 if x.get("platform") == "근본한우" else 1, x.get("min") or 999999))[:700]
+            by_max = sorted(src_cohorts, key=lambda x: -(x.get("max") or 0))[:400]
+            seen_ck = set()
+            merged_cohorts = []
+            for c_item in by_min + by_max:
+                ck = (c_item.get("cattle"), c_item.get("keeping"), c_item.get("part"), c_item.get("grade"), c_item.get("platform"), c_item.get("brand"), c_item.get("dt_range"), c_item.get("min"), c_item.get("max"))
+                if ck not in seen_ck:
+                    seen_ck.add(ck)
+                    merged_cohorts.append(c_item)
+            selected_cohorts = merged_cohorts
+        else:
+            selected_cohorts = src_cohorts[:(900 if is_latest else 30)]
+
         s_copy["cohorts"] = [
             {k: _shorten_url(v) for k, v in c.items() if v is not None and v != "-" and v != ""}
-            for c in src_cohorts[:(450 if is_latest else 30)]
+            for c in selected_cohorts
         ]
         s_copy["audit_highlights"] = sn.get("audit_highlights", [])[:(40 if is_latest else 10)]
         slim_snaps.append(s_copy)
