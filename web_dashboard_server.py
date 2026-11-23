@@ -287,6 +287,20 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(data)
             return
 
+        if path == "/data/slim_archive.json":
+            slim_file = BASE_DIR / "static_data" / "slim_archive.json"
+            if not slim_file.exists():
+                self.send_error(404, "slim_archive.json not found")
+                return
+            data = slim_file.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
+
         self.send_error(404, "Not Found")
 
     def do_POST(self) -> None:

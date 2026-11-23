@@ -3768,10 +3768,47 @@
       return Boolean(window.__GH_PAGES_STATIC__ || (window.location && window.location.hostname.endsWith("github.io")));
     }
 
+    function rebuildRunSelectDropdown() {
+      const sel = document.getElementById("runSelect");
+      if (!sel || !Array.isArray(ARCHIVE.snapshots)) return;
+      sel.innerHTML = ARCHIVE.snapshots.map((sn, idx) => {
+        const isLast = idx === ARCHIVE.snapshots.length - 1;
+        return `<option value="${idx}" ${idx === STATE.currentSnapIdx ? "selected" : ""}>#${idx + 1}회차 · ${sn.collected_date} (${fmtNum(sn.total_raw_rows)}건)${isLast ? " [최신]" : ""}</option>`;
+      }).join("");
+    }
+
+    async function hotReloadLatestStaticArchive(showNotice = true) {
+      try {
+        const arcRes = await fetch(`./data/slim_archive.json?t=${Date.now()}`, { cache: "no-store" });
+        if (!arcRes.ok) return false;
+        const freshArc = await arcRes.json();
+        if (freshArc && Array.isArray(freshArc.snapshots) && freshArc.snapshots.length > 0) {
+          ARCHIVE.snapshots = freshArc.snapshots;
+          if (freshArc.urls) ARCHIVE.urls = freshArc.urls;
+          if (freshArc.carcass_sise) ARCHIVE.carcass_sise = freshArc.carcass_sise;
+          STATE.currentSnapIdx = ARCHIVE.snapshots.length - 1;
+          rebuildRunSelectDropdown();
+          populateDynamicFilterOptions();
+          syncFilterControlsUI();
+          renderAll();
+          const latest = ARCHIVE.snapshots[STATE.currentSnapIdx];
+          if (showNotice) {
+            showToast(`최신 크롤링 회차(#${STATE.currentSnapIdx + 1} · ${latest.collected_date}, ${fmtNum(latest.total_raw_rows)}건) 데이터가 반영되었습니다.`, "✅");
+          }
+          return true;
+        }
+      } catch (e) {}
+      return false;
+    }
+
     async function triggerLiveCrawl() {
       const btn = document.getElementById("btnSidebarCrawl");
       if (isGitHubPagesStatic()) {
-        showToast("GitHub Pages 정적 배포 환경입니다. 평일 09:30 · 16:30 정기 크롤링 시 자동 동기화됩니다.", "ℹ️");
+        showToast("최신 배포된 크롤링 스냅샷 데이터를 동기화합니다...", "🔄");
+        const ok = await hotReloadLatestStaticArchive(true);
+        if (!ok) {
+          window.location.href = `${window.location.pathname}?v=${Date.now()}`;
+        }
         return;
       }
       try {
@@ -3785,11 +3822,11 @@
         showToast(data.message || "크롤링 진행 중...", "⏳");
         const timer = setInterval(async () => {
           try {
-            const sRes = await fetch("./api/status");
+            const sRes = await fetch(`./api/status?t=${Date.now()}`, { cache: "no-store" });
             const sData = await sRes.json();
             if (!sData.is_crawling) {
               clearInterval(timer);
-              window.location.reload();
+              window.location.href = `${window.location.pathname}?v=${Date.now()}`;
             }
           } catch (e) {}
         }, 4000);
@@ -3798,21 +3835,36 @@
           btn.disabled = false;
           btn.innerHTML = "<span>🔄 6대 플랫폼 즉시 크롤링 (DB 누적)</span>";
         }
-        showToast("로컬/터널 웹 서버 연결 시 즉시 크롤링이 실행됩니다.", "ℹ️");
+        await hotReloadLatestStaticArchive(true);
       }
     }
 
     async function refreshWebScheduleStatus() {
       try {
-        const statusUrl = isGitHubPagesStatic() ? "./data/status.json" : "./api/status";
+        const statusUrl = isGitHubPagesStatic()
+          ? `./data/status.json?t=${Date.now()}`
+          : `./api/status?t=${Date.now()}`;
         const res = await fetch(statusUrl, { cache: "no-store" });
         const d = await res.json();
         const el = document.getElementById("sidebarNextSchedule");
         if (el && d.next_scheduled_run) el.textContent = d.next_scheduled_run;
+
+        const curLatestDate = ARCHIVE.snapshots?.[ARCHIVE.snapshots.length - 1]?.collected_date || "";
+        if (
+          (d.total_snapshots && d.total_snapshots > ARCHIVE.snapshots.length) ||
+          (d.last_completed_label && d.last_completed_label !== "-" && d.last_completed_label !== curLatestDate)
+        ) {
+          if (isGitHubPagesStatic()) {
+            await hotReloadLatestStaticArchive(true);
+          } else if (!d.is_crawling) {
+            window.location.href = `${window.location.pathname}?v=${Date.now()}`;
+          }
+        }
       } catch (e) {}
     }
 
     function renderAll() {
+      rebuildRunSelectDropdown();
       renderView1Dashboard();
       renderComparisonMatrix();
       renderView3ProductionDate();
@@ -3825,6 +3877,7 @@
     syncFilterControlsUI();
     renderAll();
     refreshWebScheduleStatus();
+    setInterval(refreshWebScheduleStatus, 60000);
   </script>
 </body>
 </html>

@@ -3569,8 +3569,12 @@ def _read_existing_sheet_rows(wb: openpyxl.Workbook, sheet_name: str, date_col_n
     """
     if sheet_name not in wb.sheetnames:
         return []
-    ws = wb[sheet_name]
-    rows_iter = list(ws.iter_rows(values_only=True))
+    try:
+        ws = wb[sheet_name]
+        rows_iter = list(ws.iter_rows(values_only=True))
+    except Exception as e:
+        logger.warning("기존 시트(%s) 읽기 중 압축 스트림 오류 무시 (JSON 아카이브 보존됨): %s", sheet_name, e)
+        return []
     if not rows_iter:
         return []
 
@@ -3998,8 +4002,18 @@ def save_and_append_master_excel(
         wb_new.remove(default_sheet)
 
     local_master_path.parent.mkdir(parents=True, exist_ok=True)
-    wb_new.save(local_master_path)
-    logger.info("마스터 엑셀 파일(6개 시트) 저장 완료: %s", local_master_path)
+    tmp_master_path = local_master_path.with_name(f".tmp_{os.getpid()}_{local_master_path.name}")
+    wb_new.save(tmp_master_path)
+    try:
+        os.replace(str(tmp_master_path), str(local_master_path))
+    except Exception:
+        import shutil
+        shutil.copyfile(str(tmp_master_path), str(local_master_path))
+        try:
+            tmp_master_path.unlink()
+        except Exception:
+            pass
+    logger.info("마스터 엑셀 파일(6개 시트) 원자적 저장 완료: %s", local_master_path)
     return local_master_path
 
 

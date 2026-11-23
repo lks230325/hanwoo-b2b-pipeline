@@ -59,8 +59,12 @@ def _read_sheet_by_date(wb: openpyxl.Workbook, sheet_name: str) -> Dict[str, Lis
     by_date: Dict[str, List[Dict[str, Any]]] = {}
     if sheet_name not in wb.sheetnames:
         return by_date
-    ws = wb[sheet_name]
-    rows_iter = list(ws.iter_rows(values_only=True))
+    try:
+        ws = wb[sheet_name]
+        rows_iter = list(ws.iter_rows(values_only=True))
+    except Exception as exc:
+        logger.warning("시트(%s) 읽기 중 스트림 오류 무시: %s", sheet_name, exc)
+        return by_date
     if len(rows_iter) < 3:
         return by_date
     headers = [str(c).strip() if c is not None else "" for c in rows_iter[1]]

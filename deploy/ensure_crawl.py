@@ -74,8 +74,8 @@ def main() -> int:
     date_str = now.strftime("%Y-%m-%d")
     label = f"{date_str} {slot_kr}"
 
-    # web_dashboard_server.py 내장 스케줄러가 먼저 시작할 수 있도록 10초 대기 후 확인
-    time.sleep(10)
+    # web_dashboard_server.py 내장 스케줄러가 먼저 시작할 수 있도록 15초 대기 후 확인
+    time.sleep(15)
     if has_slot_run(date_str, slot_kr):
         return 0
 
@@ -83,6 +83,10 @@ def main() -> int:
         with urllib.request.urlopen("http://127.0.0.1:8080/api/status", timeout=5) as resp:
             st = json.loads(resp.read().decode("utf-8"))
             if st.get("is_crawling"):
+                return 0
+            # 웹 서버가 살아있으면 웹 서버 단일 락(STATE_LOCK)을 통해 실행하여 중복 프로세스 충돌 방지
+            req = urllib.request.Request("http://127.0.0.1:8080/api/run-now", data=b"{}", method="POST")
+            with urllib.request.urlopen(req, timeout=10) as _:
                 return 0
     except Exception:
         pass
