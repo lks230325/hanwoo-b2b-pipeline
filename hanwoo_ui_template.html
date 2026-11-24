@@ -1577,12 +1577,13 @@
       "우둔": ["우둔", "우둔살", "홍두깨살", "홍두깨", "뭉티기", "육회", "육사시미", "불고기", "장조림"],
       "우둔살": ["우둔살", "우둔", "뭉티기", "육회", "육사시미", "불고기"],
       "홍두깨살": ["홍두깨살", "홍두깨", "우둔", "장조림", "육포", "산적"],
-      "앞다리": ["앞다리", "앞다리살", "부채살", "부채덮개살", "꾸리살", "갈비덧살", "불고기", "국거리"],
-      "앞다리살": ["앞다리살", "앞다리", "불고기", "국거리"],
-      "부채살": ["부채살", "부채", "낙엽살", "앞다리", "특수부위", "구이용"],
-      "부채덮개살": ["부채덮개살", "부채살", "앞다리"],
-      "꾸리살": ["꾸리살", "꾸리", "앞다리", "육회", "불고기"],
-      "갈비덧살": ["갈비덧살", "덧살", "앞다리", "갈비"],
+      "앞다리": ["앞다리", "앞다리살", "전각", "앞다리단품", "불고기", "국거리"],
+      "앞다리+꾸리살": ["앞다리+꾸리살", "앞다리꾸리", "앞다리세트", "앞다리셋트", "꾸리포함"],
+      "앞다리살": ["앞다리살", "앞다리", "전각", "불고기", "국거리"],
+      "부채살": ["부채살", "부채", "낙엽살", "특수부위", "구이용"],
+      "부채덮개살": ["부채덮개살", "부채살"],
+      "꾸리살": ["꾸리살", "꾸리", "육회", "불고기"],
+      "갈비덧살": ["갈비덧살", "덧살", "갈비"],
       "목심": ["목심", "목살", "불고기", "국거리"],
       "사골": ["사골", "우족", "꼬리", "잡뼈", "도가니", "곰탕"],
       "꼬리": ["꼬리", "소꼬리", "꼬리반골", "사골"],
@@ -1649,6 +1650,8 @@
       }
       const q = qRaw.replace(/\s+/g, "").toLowerCase();
       const qNorm = normalizeSingleChosung(q);
+      // 검색어와 정확히 일치하는 표준 부위명이 존재하는지 확인 (예: '앞다리' 검색 시 '앞다리+꾸리살'과 혼동 방지)
+      const hasExactPartMatch = parts.some(pt => pt.toLowerCase() === q);
       const results = [];
 
       parts.forEach(p => {
@@ -1659,6 +1662,12 @@
         const mCho = extractChosung(major);
         const mChoNorm = normalizeSingleChosung(mCho);
         const assocList = PART_ASSOCIATED_DICT[p] || [p];
+
+        // [중요] 사용자가 '앞다리'를 입력했을 때 '앞다리+꾸리살'이 '앞다리'에 섞여서 매칭되지 않도록 분리
+        // ('앞다리+꾸리', '앞다리+' 또는 초성 'ㅇㄷㄹ' 입력 시에만 복합부위 함께 표시)
+        if (hasExactPartMatch && q === "앞다리" && p === "앞다리+꾸리살") {
+          return;
+        }
 
         let score = 0;
         let matchedTerms = [];
@@ -1683,8 +1692,8 @@
           matchedTerms.push(`초성 포함(${pCho})`);
         }
 
-        // 대분류(등심/갈비/양지/설도/사태/우둔/앞다리 등) 매칭 시 연관 하위 부위 함께 노출
-        if (major) {
+        // 대분류(등심/갈비/양지/설도/사태/우둔/앞다리 등) 매칭 시 연관 하위 부위 함께 노출 (단, '앞다리' 정확 입력 시 '앞다리+꾸리살' 제외)
+        if (major && !(hasExactPartMatch && q === "앞다리")) {
           const mLower = major.toLowerCase();
           if (mLower.includes(q) || mCho.includes(q) || mChoNorm.includes(qNorm)) {
             score = Math.max(score, 68);
@@ -4313,7 +4322,11 @@
         if (fStatus === "OLD_31" && !((c.elapsed || 0) >= 31)) return false;
         if (fStatus === "TRACKED" && !STATE.trackedKeys.has(getCohortKey(c))) return false;
         if (fKw) {
-          const hay = `${c.cattle} ${c.grade} ${c.keeping} ${c.major} ${c.part} ${c.platform} ${c.brand} ${c.dt_range || ""}`.toLowerCase();
+          // '앞다리' 검색 시 '앞다리+꾸리살'이 섞여서 나오지 않도록 정확 분리
+          if ((fKw === "앞다리" || fKw === "앞다리살" || fKw === "전각") && c.part === "앞다리+꾸리살") {
+            return false;
+          }
+          const hay = `${c.cattle} ${c.grade} ${c.keeping} ${c.part} ${c.platform} ${c.brand} ${c.dt_range || ""}`.toLowerCase();
           const hayCho = extractChosung(hay);
           const hayChoNorm = normalizeSingleChosung(hayCho);
           const kwNorm = normalizeSingleChosung(fKw);

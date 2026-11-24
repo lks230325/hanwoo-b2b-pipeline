@@ -382,8 +382,14 @@ class HanwooStandardizer:
             .replace("안심LPC", "")
             .replace("안심축산", "")
         )
-        # 괄호 안의 미포함/제외 문구를 제거한 문자열 (부정어로 인한 타 부위 오탐 방지용)
+        # 괄호 안 또는 문장 내 미포함/제외/분리 문구를 제거한 문자열 (부정어로 인한 타 부위 오탐 방지용)
         clean_no_excl = re.sub(r"\([^)]*(?:미포함|제외|\s*X\b|없음)[^)]*\)", "", clean_r, flags=re.I)
+        clean_no_excl = re.sub(
+            r"꾸리(?:살)?\s*(?:,\s*부채(?:살)?\s*)?(?:제외|미포함|없음|분리\s*(?:상품|제품)|X\b)",
+            "",
+            clean_no_excl,
+            flags=re.I,
+        )
 
         # 0) 소머리/내장/부산물 선행 분리 (미트프렌즈 '특수부위(거세 소머리육...)' 등이 특수부위 모둠으로 섞이는 왜곡 차단)
         if "소머리" in clean_r or "우설" in clean_r:
@@ -465,6 +471,15 @@ class HanwooStandardizer:
         if p_clean == "제비추리":
             return "특수부위", "제비추리", "제비추리(단품)", "1·2차 일치(제비추리)"
 
+        # 7) 앞다리/꾸리/부채 계열 세밀 분리 (괄호 안 '꾸리,부채 미포함제품' 오탐 원천 차단 & 앞다리+꾸리살 최우선 분리!)
+        if p_clean in ("앞다리+꾸리살", "앞다리살(앞다리+꾸리)", "앞다리셋트", "앞다리세트") or (
+            any(w in clean_no_excl for w in ["앞다리", "전각"])
+            and ("꾸리" in clean_no_excl or "미분리" in clean_r or "분리 안된" in clean_r or "분리안된" in clean_r)
+        ):
+            return "앞다리", "앞다리+꾸리살", "앞다리+꾸리살(세트)", "2차보정: 앞다리+꾸리살/꾸리포함세트 표준화(단품앞다리혼입차단)"
+        if p_clean in ("앞다리", "앞다리/전각", "앞다리살", "냉동앞다리"):
+            return "앞다리", "앞다리", "앞다리(전각/앞다리살 단품-꾸리제외)", "2차보정: 앞다리/전각/앞다리살(꾸리제외 단품)→앞다리 표준화"
+
         # 6) 양지/차돌/치마/업진 계열 세밀 분리
         if p_clean in ("앞치마살(대접살)+업진안살", "앞치마살,업진안살", "앞치마살+업진안살") or (
             "앞치마" in clean_no_excl and "업진안살" in clean_no_excl
@@ -503,13 +518,6 @@ class HanwooStandardizer:
         if p_clean == "양지" or "양지" in clean_no_excl:
             return "양지", "양지", "양지(통양지/일반)", "1·2차 일치(양지)"
 
-        # 7) 앞다리/꾸리/부채 계열 세밀 분리 (괄호 안 '꾸리,부채 미포함제품' 오탐 원천 차단!)
-        if p_clean in ("앞다리+꾸리살", "앞다리살(앞다리+꾸리)", "앞다리셋트") or (
-            "앞다리" in clean_no_excl and "꾸리" in clean_no_excl
-        ):
-            return "앞다리", "앞다리+꾸리살", "앞다리+꾸리살(세트)", "2차보정: 앞다리+꾸리살/앞다리셋트 표준화"
-        if p_clean in ("앞다리", "앞다리/전각", "앞다리살", "냉동앞다리"):
-            return "앞다리", "앞다리", "앞다리(전각/앞다리살)", "2차보정: 앞다리/전각/앞다리살→앞다리 표준화"
         if p_clean == "부채안살" or "부채안살" in clean_no_excl:
             return "앞다리", "부채안살", "부채안살(단품)", "1·2차 일치(부채안살 분리)"
         if p_clean in ("부채살", "부챗살") or "부채살" in clean_no_excl or "부챗살" in clean_no_excl:
@@ -518,7 +526,7 @@ class HanwooStandardizer:
         if p_clean == "꾸리살" or "꾸리살" in clean_no_excl:
             return "앞다리", "꾸리살", "꾸리살(단품)", "1·2차 일치(꾸리살 분리)"
         if any(w in clean_no_excl for w in ["앞다리", "전각"]):
-            return "앞다리", "앞다리", "앞다리(전각/앞다리살)", "1·2차 일치(앞다리)"
+            return "앞다리", "앞다리", "앞다리(전각/앞다리살 단품-꾸리제외)", "1·2차 일치(앞다리 단품)"
 
         # 8) 설도/설깃/삼각/보섭/도가니살 계열 세밀 분리
         # ('설도(삼각살 X)'는 설도(삼각살제외)로, '설도(도가니살, 보섭살)' / '설도 보섭살,도가니살,삼각살 반두'는 통설도로 정확 분류!)
@@ -942,6 +950,7 @@ def fetch_meatbox_and_geunbon(session: requests.Session, today_str: str, exclude
         keep_raw = str(it.get("keepingName") or "").strip()
         proc_raw = str(it.get("procName") or "").strip()
         grade_raw = str(it.get("gradeName") or "").strip()
+        event_msg = str(it.get("eventMsg") or "").strip()
 
         stock_val = it.get("stockAmount")
         try:
@@ -968,7 +977,34 @@ def fetch_meatbox_and_geunbon(session: requests.Session, today_str: str, exclude
             if m_p:
                 unit_price = int(m_p.group(1).replace(",", ""))
 
-        m_part, part_std, sub_spec, v_stat = HanwooStandardizer.verify_and_normalize_part(item_cat, name, unit_price)
+        # [정밀 매핑 보강] 미트박스 '앞다리/전각' 카테고리는 상품명에는 '앞다리/전각'만 적혀 있고
+        # 부제(eventMsg) 또는 상세설명(.iPeGKW_cont)에 '[꾸리살포함]', '앞다리+꾸리', '앞다리살1팩+꾸리살1팩' 등이 표기됨.
+        # 이를 정밀 추출하여 앞다리+꾸리살 상품은 반드시 '앞다리+꾸리살'로만 매핑하고 순수 '앞다리'에 섞이지 않도록 분리!
+        detail_hint = event_msg
+        if "앞다리" in item_cat or "앞다리" in name or "전각" in name:
+            has_kuri_decision = any(
+                w in event_msg
+                for w in ["꾸리", "미분리", "분리 상품", "분리 안된", "분리안된", "제외", "미포함"]
+            )
+            if not has_kuri_decision and p_seq:
+                try:
+                    r_dtl = session.get(
+                        f"https://www.meatbox.co.kr/fo/product/productViewPage.do?productSeq={p_seq}",
+                        headers={"Origin": "https://www.meatbox.co.kr"},
+                        timeout=8,
+                    )
+                    if r_dtl.status_code == 200:
+                        soup_dtl = BeautifulSoup(r_dtl.text, "html.parser")
+                        cont_txts = [x.get_text(" ", strip=True) for x in soup_dtl.select(".iPeGKW_cont")]
+                        if cont_txts:
+                            detail_hint = f"{event_msg} {cont_txts[0]}".strip()
+                except Exception:
+                    pass
+
+        full_name_for_verify = f"{name} ({detail_hint})".strip() if detail_hint else name
+        m_part, part_std, sub_spec, v_stat = HanwooStandardizer.verify_and_normalize_part(
+            item_cat, full_name_for_verify, unit_price
+        )
 
         if "할랄" in brand or "할랄" in name:
             dropped_non_wonmul += 1
@@ -1014,7 +1050,7 @@ def fetch_meatbox_and_geunbon(session: requests.Session, today_str: str, exclude
             "grade": grade_std,
             "brand_name": brand,
             "base_price": unit_price,
-            "raw_name": name,
+            "raw_name": full_name_for_verify,
             "stock_qty": max(stock_qty, 1),
             "url": f"https://www.meatbox.co.kr/fo/product/productViewPage.do?productSeq={p_seq}",
         })
