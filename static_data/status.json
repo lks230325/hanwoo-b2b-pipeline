@@ -2,7 +2,7 @@
   "is_crawling": false,
   "current_label": null,
   "last_completed_label": "2026-11-24 09시30분",
-  "last_completed_at": "2026-11-24 09:34:48",
+  "last_completed_at": "2026-11-24 12:58:43",
   "last_error": null,
   "schedule_rule": "평일(월~금) 오전 09:30 / 오후 16:30 자동 크롤링 (토·일 제외)",
   "next_scheduled_run": "2026-11-24 (화) 16:30",

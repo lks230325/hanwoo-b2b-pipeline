@@ -227,6 +227,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet, noimageindex")
         self.send_header("Content-Length", str(len(raw)))
         self.end_headers()
         self.wfile.write(raw)
@@ -235,11 +236,28 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
 
+        if path == "/robots.txt":
+            robots_file = BASE_DIR / "robots.txt"
+            robots_bytes = (
+                robots_file.read_bytes()
+                if robots_file.exists()
+                else b"User-agent: *\nDisallow: /\n\nUser-agent: Googlebot\nDisallow: /\n\nUser-agent: Yeti\nDisallow: /\n"
+            )
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet")
+            self.send_header("Content-Length", str(len(robots_bytes)))
+            self.end_headers()
+            self.wfile.write(robots_bytes)
+            return
+
         if path in ("/", "/index.html", "/dashboard"):
             if not DASHBOARD_HTML_PATH.exists():
                 msg = "<h1>대시보드 파일을 생성 중입니다. 잠시 후 새로고침 해주세요.</h1>".encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet, noimageindex")
                 self.end_headers()
                 self.wfile.write(msg)
                 return
@@ -247,6 +265,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+            self.send_header("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet, noimageindex")
             self.send_header("Content-Length", str(len(raw_html)))
             self.end_headers()
             self.wfile.write(raw_html)
@@ -282,6 +301,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             self.send_header("Content-Disposition", 'attachment; filename="hanwoo_master_cumulative.xlsx"')
+            self.send_header("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet")
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
@@ -296,6 +316,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet")
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)

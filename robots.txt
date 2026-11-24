@@ -1,0 +1,20 @@
+User-agent: *
+Disallow: /
+
+User-agent: Googlebot
+Disallow: /
+
+User-agent: Googlebot-Image
+Disallow: /
+
+User-agent: Yeti
+Disallow: /
+
+User-agent: NaverBot
+Disallow: /
+
+User-agent: Daumoa
+Disallow: /
+
+User-agent: Bingbot
+Disallow: /

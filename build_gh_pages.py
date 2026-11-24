@@ -130,6 +130,15 @@ def build_dist(public_pages_url: str = "") -> Path:
     (DIST_DIR / "index.html").write_text(tpl_str, encoding="utf-8")
     (DIST_DIR / ".nojekyll").write_text("", encoding="utf-8")
 
+    # 검색엔진(Google, Naver Yeti, Daum, Bing 등) 크롤러 색인 전면 차단용 robots.txt 배포
+    robots_src = WORK_DIR / "robots.txt"
+    robots_txt = (
+        robots_src.read_text(encoding="utf-8")
+        if robots_src.exists()
+        else "User-agent: *\nDisallow: /\n\nUser-agent: Googlebot\nDisallow: /\n\nUser-agent: Yeti\nDisallow: /\n"
+    )
+    (DIST_DIR / "robots.txt").write_text(robots_txt, encoding="utf-8")
+
     snaps = slim_payload.get("snapshots", [])
     latest = snaps[-1] if snaps else {}
     print(
