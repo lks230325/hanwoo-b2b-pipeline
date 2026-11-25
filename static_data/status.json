@@ -1,12 +1,12 @@
 {
   "is_crawling": false,
   "current_label": null,
-  "last_completed_label": "2026-11-25 09시30분",
-  "last_completed_at": "2026-11-25 09:37:01",
+  "last_completed_label": "2026-11-25 17시13분",
+  "last_completed_at": "2026-11-25 17:21:32",
   "last_error": null,
   "schedule_rule": "평일(월~금) 오전 09:30 / 오후 16:30 자동 크롤링 (토·일 제외)",
-  "next_scheduled_run": "2026-11-25 (수) 16:30",
-  "total_snapshots": 16,
+  "next_scheduled_run": "2026-11-26 (목) 09:30",
+  "total_snapshots": 17,
   "github_pages_url": "https://lks230325.github.io/hanwoo-b2b-pipeline/",
   "fixed_https_url": "https://cqwq4y4auzplvuyk.l.tunwg.com",
   "gdrive_folder_url": "https://drive.google.com/drive/folders/1up8hQdRmuvEFaVjWWtDEjbaVbgCciFSe"
